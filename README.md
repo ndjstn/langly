@@ -30,7 +30,7 @@ Langly is a hierarchical agent system where you interact as a business owner wit
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/langly.git
+git clone https://github.com/ndjstn/langly.git
 cd langly
 
 # Install dependencies using uv
