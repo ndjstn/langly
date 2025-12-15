@@ -1,0 +1,426 @@
+# =============================================================================
+# Langly CI/CD Pipeline
+# =============================================================================
+# This workflow runs on every push and pull request to ensure code quality.
+# It includes:
+# - Linting (Ruff, Black, isort, MyPy)
+# - Security scanning (Bandit)
+# - Unit tests
+# - Integration tests (with mocked external services)
+# - User flow tests
+# - Coverage reporting
+# =============================================================================
+
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:  # Allow manual triggers
+
+env:
+  PYTHON_VERSION: "3.12"
+  UV_VERSION: "0.4.18"
+
+jobs:
+  # ===========================================================================
+  # Linting Job - Fast feedback on code style
+  # ===========================================================================
+  lint:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          uv sync --all-extras
+
+      - name: Ruff Linting
+        run: |
+          uv run ruff check app tests --output-format=github
+
+      - name: Ruff Formatting
+        run: |
+          uv run ruff format --check app tests
+
+      - name: Black Formatting
+        run: |
+          uv run black --check app tests
+
+      - name: isort Import Sorting
+        run: |
+          uv run isort --check-only app tests
+
+  # ===========================================================================
+  # Type Checking Job
+  # ===========================================================================
+  typecheck:
+    name: Type Checking (MyPy)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          uv sync --all-extras
+
+      - name: MyPy Type Checking
+        run: |
+          uv run mypy app --ignore-missing-imports
+        continue-on-error: true  # Don't fail on type errors during development
+
+  # ===========================================================================
+  # Security Scanning Job
+  # ===========================================================================
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          uv sync --all-extras
+
+      - name: Bandit Security Scan
+        run: |
+          uv run bandit -r app -c pyproject.toml -f json -o bandit-report.json || true
+
+      - name: Upload Bandit Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-security-report
+          path: bandit-report.json
+          if-no-files-found: ignore
+
+  # ===========================================================================
+  # Unit Tests Job
+  # ===========================================================================
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          uv sync --all-extras
+
+      - name: Run Unit Tests
+        run: |
+          uv run pytest tests/ -m "unit or not (integration or e2e or slow)" \
+            --cov=app \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --junitxml=junit-unit.xml \
+            -v
+
+      - name: Upload Coverage Report
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+          flags: unittests
+          fail_ci_if_error: false
+        continue-on-error: true
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-test-results
+          path: junit-unit.xml
+
+  # ===========================================================================
+  # Integration Tests Job
+  # ===========================================================================
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [lint, unit-tests]  # Only run after lint and unit tests pass
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          uv sync --all-extras
+
+      - name: Run Integration Tests
+        run: |
+          uv run pytest tests/ -m "integration" \
+            --cov=app \
+            --cov-report=xml \
+            --junitxml=junit-integration.xml \
+            -v
+        continue-on-error: true  # Integration tests may require external services
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-test-results
+          path: junit-integration.xml
+
+  # ===========================================================================
+  # User Flow Tests Job (Automated User Testing)
+  # ===========================================================================
+  user-tests:
+    name: User Flow Tests
+    runs-on: ubuntu-latest
+    needs: [lint, unit-tests]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          uv sync --all-extras
+
+      - name: Run User Flow Tests
+        run: |
+          uv run pytest tests/test_user_flows.py -m "user" \
+            --junitxml=junit-user.xml \
+            -v
+        continue-on-error: true
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: user-test-results
+          path: junit-user.xml
+
+  # ===========================================================================
+  # API Tests Job
+  # ===========================================================================
+  api-tests:
+    name: API Tests
+    runs-on: ubuntu-latest
+    needs: [lint, unit-tests]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          uv sync --all-extras
+
+      - name: Run API Tests
+        run: |
+          uv run pytest tests/test_api.py -v --junitxml=junit-api.xml
+        continue-on-error: true
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-test-results
+          path: junit-api.xml
+
+  # ===========================================================================
+  # Full Test Suite (E2E with External Services)
+  # ===========================================================================
+  e2e-tests:
+    name: End-to-End Tests
+    runs-on: ubuntu-latest
+    needs: [integration-tests]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    services:
+      neo4j:
+        image: neo4j:5
+        env:
+          NEO4J_AUTH: neo4j/testpassword
+        ports:
+          - 7474:7474
+          - 7687:7687
+        options: >-
+          --health-cmd "curl -f http://localhost:7474/db/neo4j/cluster/available || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Install Ollama
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve &
+          sleep 5
+
+      - name: Pull Granite Model
+        run: |
+          ollama pull granite3.1-dense:2b || true
+        continue-on-error: true
+
+      - name: Install dependencies
+        run: |
+          uv sync --all-extras
+
+      - name: Create .env file
+        run: |
+          echo "NEO4J_URI=bolt://localhost:7687" >> .env
+          echo "NEO4J_USERNAME=neo4j" >> .env
+          echo "NEO4J_PASSWORD=testpassword" >> .env
+          echo "OLLAMA_HOST=http://localhost:11434" >> .env
+
+      - name: Run E2E Tests
+        run: |
+          uv run pytest tests/ -m "e2e" \
+            --junitxml=junit-e2e.xml \
+            -v
+        continue-on-error: true
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-test-results
+          path: junit-e2e.xml
+
+  # ===========================================================================
+  # Build Check
+  # ===========================================================================
+  build:
+    name: Build Check
+    runs-on: ubuntu-latest
+    needs: [lint, unit-tests]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Build Package
+        run: |
+          uv build
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  # ===========================================================================
+  # Summary Job
+  # ===========================================================================
+  ci-summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck, security, unit-tests, integration-tests, user-tests, api-tests, build]
+    if: always()
+    steps:
+      - name: Check Results
+        run: |
+          echo "## CI Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Lint | ${{ needs.lint.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Type Check | ${{ needs.typecheck.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security | ${{ needs.security.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Unit Tests | ${{ needs.unit-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Integration Tests | ${{ needs.integration-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| User Flow Tests | ${{ needs.user-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| API Tests | ${{ needs.api-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Set Exit Code
+        if: needs.lint.result != 'success' || needs.unit-tests.result != 'success'
+        run: exit 1

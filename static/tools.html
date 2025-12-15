@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tools Management - Langly</title>
+    
+    <link rel="stylesheet" href="/static/panel-system.css">
+    <style>
+        :root {
+            --bg: #0d1117;
+            --panel: #161b22;
+            --border: #30363d;
+            --text: #e6edf3;
+            --muted: #7d8590;
+            --accent: #58a6ff;
+            --ok: #238636;
+            --warning: #d29922;
+            --danger: #f85149;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 24px;
+            background: var(--panel);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .page-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .page-title h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .back-link {
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .back-link:hover { text-decoration: underline; }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            border: none;
+            color: white;
+        }
+
+        .btn-primary:hover { background: #79b8ff; }
+
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* Main Layout */
+        .page-content {
+            display: flex;
+            height: calc(100vh - 65px);
+        }
+
+        /* Sidebar - Tool Categories */
+        .tools-sidebar {
+            width: 260px;
+            background: var(--panel);
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+        }
+
+        .sidebar-section {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        .category-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            color: var(--text);
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .category-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .category-item.active {
+            background: rgba(88, 166, 255, 0.15);
+            color: var(--accent);
+        }
+
+        .category-icon { font-size: 16px; }
+
+        .category-count {
+            margin-left: auto;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        /* Main Content */
+        .tools-main {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        /* Search Bar */
+        .search-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .search-input {
+            flex: 1;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .search-input::placeholder {
+            color: var(--muted);
+        }
+
+        /* Tools Grid */
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 16px;
+        }
+
+        /* Tool Card */
+        .tool-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+
+        .tool-card:hover {
+            border-color: var(--accent);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .tool-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tool-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            background: rgba(88, 166, 255, 0.1);
+        }
+
+        .tool-info { flex: 1; }
+
+        .tool-name {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .tool-category {
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .tool-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .tool-status.enabled {
+            background: rgba(35, 134, 54, 0.2);
+            color: var(--ok);
+        }
+
+        .tool-status.disabled {
+            background: rgba(125, 133, 144, 0.2);
+            color: var(--muted);
+        }
+
+        .tool-card-body {
+            padding: 16px;
+        }
+
+        .tool-description {
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+
+        .tool-meta {
+            display: flex;
+            gap: 16px;
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .tool-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .tool-card-footer {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border-top: 1px solid var(--border);
+        }
+
+        .tool-action {
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tool-action-config {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        .tool-action-config:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .tool-action-toggle {
+            background: var(--accent);
+            border: none;
+            color: white;
+        }
+
+        .tool-action-toggle.disabled {
+            background: var(--muted);
+        }
+
+        /* Add Tool Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            width: 100%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: transparent;
+            border: none;
+            color: var(--muted);
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .modal-close:hover {
+            color: var(--text);
+        }
+
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text);
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+            font-family: 'Monaco', 'Menlo', monospace;
+        }
+
+        .form-help {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 6px;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Tool Configuration Panel */
+        .config-panel {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            height: 100%;
+            background: var(--panel);
+            border-left: 1px solid var(--border);
+            z-index: 999;
+            transition: right 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .config-panel.active {
+            right: 0;
+        }
+
+        .config-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .config-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .config-close {
+            background: transparent;
+            border: none;
+            color: var(--muted);
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .config-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .config-section {
+            margin-bottom: 24px;
+        }
+
+        .config-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        .config-field {
+            margin-bottom: 16px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 40px;
+            height: 20px;
+            background: var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .toggle-switch.active {
+            background: var(--accent);
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            transition: all 0.3s;
+        }
+
+        .toggle-switch.active::after {
+            left: 22px;
+        }
+
+        .config-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
+        }
+
+        /* Stats */
+        .stats-bar {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px 20px;
+            min-width: 160px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--muted);
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="page-header">
+        <div class="page-title">
+            <a href="/static/index.html" class="back-link">← Back to Dashboard</a>
+            <h1>🔧 Tools Management</h1>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-secondary" id="refresh-btn">
+                🔄 Refresh
+            </button>
+            <button class="btn btn-primary" id="add-tool-btn">
+                ➕ Add Tool
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="page-content">
+        <!-- Sidebar -->
+        <aside class="tools-sidebar">
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Categories</div>
+                <div class="category-item active" data-category="all">
+                    <span class="category-icon">📦</span>
+                    <span>All Tools</span>
+                    <span class="category-count" id="count-all">12</span>
+                </div>
+                <div class="category-item" data-category="file">
+                    <span class="category-icon">📁</span>
+                    <span>File System</span>
+                    <span class="category-count">4</span>
+                </div>
+                <div class="category-item" data-category="code">
+                    <span class="category-icon">💻</span>
+                    <span>Code Execution</span>
+                    <span class="category-count">3</span>
+                </div>
+                <div class="category-item" data-category="vcs">
+                    <span class="category-icon">📂</span>
+                    <span>Version Control</span>
+                    <span class="category-count">2</span>
+                </div>
+                <div class="category-item" data-category="api">
+                    <span class="category-icon">🌐</span>
+                    <span>External APIs</span>
+                    <span class="category-count">2</span>
+                </div>
+                <div class="category-item" data-category="db">
+                    <span class="category-icon">🗄️</span>
+                    <span>Database</span>
+                    <span class="category-count">1</span>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Status</div>
+                <div class="category-item" data-status="enabled">
+                    <span class="category-icon">✅</span>
+                    <span>Enabled</span>
+                    <span class="category-count">10</span>
+                </div>
+                <div class="category-item" data-status="disabled">
+                    <span class="category-icon">⏸️</span>
+                    <span>Disabled</span>
+                    <span class="category-count">2</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main -->
+        <main class="tools-main">
+            <!-- Stats -->
+            <div class="stats-bar">
+                <div class="stat-card">
+                    <div class="stat-value">12</div>
+                    <div class="stat-label">Total Tools</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">10</div>
+                    <div class="stat-label">Active</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">847</div>
+                    <div class="stat-label">Executions Today</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">99.2%</div>
+                    <div class="stat-label">Success Rate</div>
+                </div>
+            </div>
+
+            <!-- Search -->
+            <div class="search-bar">
+                <input type="text" class="search-input" placeholder="Search tools by name or description...">
+                <button class="btn btn-secondary">🔍 Search</button>
+            </div>
+
+            <!-- Tools Grid -->
+            <div class="tools-grid" id="tools-grid">
+                <!-- File Read Tool -->
+                <div class="tool-card" data-tool-id="file_read" data-category="file">
+                    <div class="tool-card-header">
+                        <div class="tool-icon">📖</div>
+                        <div class="tool-info">
+                            <div class="tool-name">File Read</div>
+                            <div class="tool-category">File System</div>
+                        </div>
+                        <span class="tool-status enabled">Enabled</span>
+                    </div>
+                    <div class="tool-card-body">
+                        <p class="tool-description">Read contents from files within the project workspace. Supports text files, JSON, and configuration files.</p>
+                        <div class="tool-meta">
+                            <span class="tool-meta-item">📊 256 uses</span>
+                            <span class="tool-meta-item">⏱️ 12ms avg</span>
+                        </div>
+                    </div>
+                    <div class="tool-card-footer">
+                        <button class="tool-action tool-action-config">⚙️ Configure</button>
+                        <button class="tool-action tool-action-toggle">Disable</button>
+                    </div>
+                </div>
+
+                <!-- File Write Tool -->
+                <div class="tool-card" data-tool-id="file_write" data-category="file">
+                    <div class="tool-card-header">
+                        <div class="tool-icon">✏️</div>
+                        <div class="tool-info">
+                            <div class="tool-name">File Write</div>
+                            <div class="tool-category">File System</div>
+                        </div>
+                        <span class="tool-status enabled">Enabled</span>
+                    </div>
+                    <div class="tool-card-body">
+                        <p class="tool-description">Write content to files. Creates new files or overwrites existing ones with proper permission checks.</p>
+                        <div class="tool-meta">
+                            <span class="tool-meta-item">📊 128 uses</span>
+                            <span class="tool-meta-item">⏱️ 18ms avg</span>
+                        </div>
+                    </div>
+                    <div class="tool-card-footer">
+                        <button class="tool-action tool-action-config">⚙️ Configure</button>
+                        <button class="tool-action tool-action-toggle">Disable</button>
+                    </div>
+                </div>
+
+                <!-- Python Executor -->
+                <div class="tool-card" data-tool-id="python_executor" data-category="code">
+                    <div class="tool-card-header">
+                        <div class="tool-icon">🐍</div>
+                        <div class="tool-info">
+                            <div class="tool-name">Python Executor</div>
+                            <div class="tool-category">Code Execution</div>
+                        </div>
+                        <span class="tool-status enabled">Enabled</span>
+                    </div>
+                    <div class="tool-card-body">
+                        <p class="tool-description">Execute Python code in a sandboxed environment with configurable timeouts and memory limits.</p>
+                        <div class="tool-meta">
+                            <span class="tool-meta-item">📊 89 uses</span>
+                            <span class="tool-meta-item">⏱️ 450ms avg</span>
+                        </div>
+                    </div>
+                    <div class="tool-card-footer">
+                        <button class="tool-action tool-action-config">⚙️ Configure</button>
+                        <button class="tool-action tool-action-toggle">Disable</button>
+                    </div>
+                </div>
+
+                <!-- Shell Command -->
+                <div class="tool-card" data-tool-id="shell_command" data-category="code">
+                    <div class="tool-card-header">
+                        <div class="tool-icon">💻</div>
+                        <div class="tool-info">
+                            <div class="tool-name">Shell Command</div>
+                            <div class="tool-category">Code Execution</div>
+                        </div>
+                        <span class="tool-status disabled">Disabled</span>
+                    </div>
+                    <div class="tool-card-body">
+                        <p class="tool-description">Execute shell commands with restricted permissions. Requires explicit approval for dangerous operations.</p>
+                        <div class="tool-meta">
+                            <span class="tool-meta-item">📊 0 uses</span>
+                            <span class="tool-meta-item">⏱️ N/A</span>
+                        </div>
+                    </div>
+                    <div class="tool-card-footer">
+                        <button class="tool-action tool-action-config">⚙️ Configure</button>
+                        <button class="tool-action tool-action-toggle disabled">Enable</button>
+                    </div>
+                </div>
+
+                <!-- Git Operations -->
+                <div class="tool-card" data-tool-id="git_operations" data-category="vcs">
+                    <div class="tool-card-header">
+                        <div class="tool-icon">📂</div>
+                        <div class="tool-info">
+                            <div class="tool-name">Git Operations</div>
+                            <div class="tool-category">Version Control</div>
+                        </div>
+                        <span class="tool-status enabled">Enabled</span>
+                    </div>
+                    <div class="tool-card-body">
+                        <p class="tool-description">Perform Git operations like status, diff, commit, and branch management within the project.</p>
+                        <div class="tool-meta">
+                            <span class="tool-meta-item">📊 156 uses</span>
+                            <span class="tool-meta-item">⏱️ 85ms avg</span>
+                        </div>
+                    </div>
+                    <div class="tool-card-footer">
+                        <button class="tool-action tool-action-config">⚙️ Configure</button>
+                        <button class="tool-action tool-action-toggle">Disable</button>
+                    </div>
+                </div>
+
+                <!-- HTTP Request -->
+                <div class="tool-card" data-tool-id="http_request" data-category="api">
+                    <div class="tool-card-header">
+                        <div class="tool-icon">🌐</div>
+                        <div class="tool-info">
+                            <div class="tool-name">HTTP Request</div>
+                            <div class="tool-category">External APIs</div>
+                        </div>
+                        <span class="tool-status enabled">Enabled</span>
+                    </div>
+                    <div class="tool-card-body">
+                        <p class="tool-description">Make HTTP requests to external APIs. Supports GET, POST, PUT, DELETE with custom headers.</p>
+                        <div class="tool-meta">
+                            <span class="tool-meta-item">📊 67 uses</span>
+                            <span class="tool-meta-item">⏱️ 320ms avg</span>
+                        </div>
+                    </div>
+                    <div class="tool-card-footer">
+                        <button class="tool-action tool-action-config">⚙️ Configure</button>
+                        <button class="tool-action tool-action-toggle">Disable</button>
+                    </div>
+                </div>
+
+                <!-- Database Query -->
+                <div class="tool-card" data-tool-id="database_query" data-category="db">
+                    <div class="tool-card-header">
+                        <div class="tool-icon">🗄️</div>
+                        <div class="tool-info">
+                            <div class="tool-name">Database Query</div>
+                            <div class="tool-category">Database</div>
+                        </div>
+                        <span class="tool-status enabled">Enabled</span>
+                    </div>
+                    <div class="tool-card-body">
+                        <p class="tool-description">Execute read-only database queries against connected Neo4j graph database for knowledge retrieval.</p>
+                        <div class="tool-meta">
+                            <span class="tool-meta-item">📊 151 uses</span>
+                            <span class="tool-meta-item">⏱️ 45ms avg</span>
+                        </div>
+                    </div>
+                    <div class="tool-card-footer">
+                        <button class="tool-action tool-action-config">⚙️ Configure</button>
+                        <button class="tool-action tool-action-toggle">Disable</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add Tool Modal -->
+    <div class="modal-overlay" id="add-tool-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title">➕ Register New Tool</span>
+                <button class="modal-close" id="close-modal">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Tool Name *</label>
+                    <input type="text" class="form-input" id="tool-name" placeholder="e.g., custom_analyzer">
+                    <p class="form-help">Unique identifier for the tool (snake_case)</p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Display Name *</label>
+                    <input type="text" class="form-input" id="tool-display-name" placeholder="e.g., Custom Analyzer">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Category *</label>
+                    <select class="form-select" id="tool-category">
+                        <option value="file">File System</option>
+                        <option value="code">Code Execution</option>
+                        <option value="vcs">Version Control</option>
+                        <option value="api">External APIs</option>
+                        <option value="db">Database</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description *</label>
+                    <textarea class="form-input" id="tool-description" rows="3" placeholder="What does this tool do?"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Implementation (Python Function)</label>
+                    <textarea class="form-textarea" id="tool-implementation" placeholder="async def execute(params: dict) -> dict:
+    # Your implementation here
+    return {'result': 'success'}"></textarea>
+                    <p class="form-help">Python async function that implements the tool logic</p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Input Schema (JSON)</label>
+                    <textarea class="form-textarea" id="tool-schema" placeholder='{
+  "type": "object",
+  "properties": {
+    "input": {"type": "string", "description": "Input parameter"}
+  },
+  "required": ["input"]
+}'></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancel-add">Cancel</button>
+                <button class="btn btn-primary" id="submit-tool">Register Tool</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configuration Panel -->
+    <div class="config-panel" id="config-panel">
+        <div class="config-header">
+            <span class="config-title">⚙️ Tool Configuration</span>
+            <button class="config-close" id="close-config">×</button>
+        </div>
+        <div class="config-body">
+            <div class="config-section">
+                <div class="config-section-title">General Settings</div>
+                <div class="config-field">
+                    <label class="form-label">Enabled</label>
+                    <div class="toggle-switch active" id="toggle-enabled"></div>
+                </div>
+                <div class="config-field">
+                    <label class="form-label">Requires Approval</label>
+                    <div class="toggle-switch" id="toggle-approval"></div>
+                </div>
+            </div>
+
+            <div class="config-section">
+                <div class="config-section-title">Limits</div>
+                <div class="config-field">
+                    <label class="form-label">Timeout (seconds)</label>
+                    <input type="number" class="form-input" value="30">
+                </div>
+                <div class="config-field">
+                    <label class="form-label">Max Executions per Hour</label>
+                    <input type="number" class="form-input" value="100">
+                </div>
+            </div>
+
+            <div class="config-section">
+                <div class="config-section-title">Agent Access</div>
+                <div class="config-field">
+                    <label class="form-label">Allowed Agents</label>
+                    <select class="form-select" multiple>
+                        <option selected>PM Agent</option>
+                        <option selected>Coder Agent</option>
+                        <option selected>Architect Agent</option>
+                        <option>Tester Agent</option>
+                        <option>Documentation Agent</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="config-footer">
+            <button class="btn btn-secondary" style="flex:1" id="reset-config">Reset</button>
+            <button class="btn btn-primary" style="flex:1" id="save-config">Save Changes</button>
+        </div>
+    </div>
+
+    <script>
+        // Modal handling
+        const addToolBtn = document.getElementById('add-tool-btn');
+        const addToolModal = document.getElementById('add-tool-modal');
+        const closeModalBtn = document.getElementById('close-modal');
+        const cancelAddBtn = document.getElementById('cancel-add');
+
+        addToolBtn.addEventListener('click', () => {
+            addToolModal.classList.add('active');
+        });
+
+        closeModalBtn.addEventListener('click', () => {
+            addToolModal.classList.remove('active');
+        });
+
+        cancelAddBtn.addEventListener('click', () => {
+            addToolModal.classList.remove('active');
+        });
+
+        addToolModal.addEventListener('click', (e) => {
+            if (e.target === addToolModal) {
+                addToolModal.classList.remove('active');
+            }
+        });
+
+        // Configuration panel
+        const configPanel = document.getElementById('config-panel');
+        const closeConfigBtn = document.getElementById('close-config');
+
+        document.querySelectorAll('.tool-action-config').forEach(btn => {
+            btn.addEventListener('click', () => {
+                configPanel.classList.add('active');
+            });
+        });
+
+        closeConfigBtn.addEventListener('click', () => {
+            configPanel.classList.remove('active');
+        });
+
+        // Category filtering
+        document.querySelectorAll('.category-item').forEach(item => {
+            item.addEventListener('click', () => {
+                document.querySelectorAll('.category-item').forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+                
+                const category = item.dataset.category;
+                const status = item.dataset.status;
+                
+                document.querySelectorAll('.tool-card').forEach(card => {
+                    if (category === 'all' || card.dataset.category === category) {
+                        card.style.display = '';
+                    } else if (status) {
+                        const cardStatus = card.querySelector('.tool-status');
+                        if (cardStatus.classList.contains(status)) {
+                            card.style.display = '';
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        });
+
+        // Toggle switches
+        document.querySelectorAll('.toggle-switch').forEach(toggle => {
+            toggle.addEventListener('click', () => {
+                toggle.classList.toggle('active');
+            });
+        });
+
+        // Tool toggle
+        document.querySelectorAll('.tool-action-toggle').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const card = btn.closest('.tool-card');
+                const status = card.querySelector('.tool-status');
+                
+                if (status.classList.contains('enabled')) {
+                    status.classList.remove('enabled');
+                    status.classList.add('disabled');
+                    status.textContent = 'Disabled';
+                    btn.textContent = 'Enable';
+                    btn.classList.add('disabled');
+                } else {
+                    status.classList.remove('disabled');
+                    status.classList.add('enabled');
+                    status.textContent = 'Enabled';
+                    btn.textContent = 'Disable';
+                    btn.classList.remove('disabled');
+                }
+            });
+        });
+
+        // Submit new tool
+        document.getElementById('submit-tool').addEventListener('click', async () => {
+            const toolData = {
+                name: document.getElementById('tool-name').value,
+                display_name: document.getElementById('tool-display-name').value,
+                category: document.getElementById('tool-category').value,
+                description: document.getElementById('tool-description').value,
+                implementation: document.getElementById('tool-implementation').value,
+                schema: document.getElementById('tool-schema').value
+            };
+
+            try {
+                const response = await fetch('/api/v1/tools', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(toolData)
+                });
+                
+                if (response.ok) {
+                    alert('Tool registered successfully!');
+                    addToolModal.classList.remove('active');
+                    location.reload();
+                } else {
+                    const error = await response.json();
+                    alert(`Error: ${error.detail || 'Failed to register tool'}`);
+                }
+            } catch (err) {
+                console.error('Error registering tool:', err);
+                alert('Failed to register tool. Please try again.');
+            }
+        });
+
+        // Load tools from API
+        async function loadTools() {
+            try {
+                const response = await fetch('/api/v1/tools');
+                const tools = await response.json();
+                // Update UI with tools data
+                console.log('Loaded tools:', tools);
+            } catch (err) {
+                console.error('Error loading tools:', err);
+            }
+        }
+
+        // Refresh button
+        document.getElementById('refresh-btn').addEventListener('click', loadTools);
+
+        // Initial load
+        loadTools();
+    </script>
+</body>
+</html>

@@ -1,0 +1,375 @@
+/**
+ * Tiling Window Manager Styles for Langly
+ */
+
+/* Tiled Panel Styles */
+.tiled-panel {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  overflow: hidden;
+  margin: 0 !important;
+}
+
+.tiled-panel.tiled-focused {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(74, 163, 255, 0.2);
+  z-index: 5;
+}
+
+.tiled-panel.tiled-focused .bar,
+.tiled-panel.tiled-focused .panel-header {
+  background: rgba(74, 163, 255, 0.1);
+}
+
+/* Remove drag and resize handles in tiling mode */
+.tiled-panel .drag-handle,
+.tiled-panel .resize-handle {
+  display: none !important;
+}
+
+/* Tiled minimized state */
+.tiled-panel.tiled-minimized {
+  display: none !important;
+}
+
+/* Layout Indicator */
+.layout-indicator {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 1000;
+  transition: all 0.3s ease;
+  opacity: 0.8;
+}
+
+.layout-indicator:hover {
+  opacity: 1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.layout-indicator .layout-icon {
+  font-size: 14px;
+}
+
+.layout-indicator .layout-name {
+  text-transform: capitalize;
+}
+
+/* Layout Selector */
+.layout-selector {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--panel);
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  padding: 16px;
+  z-index: 2000;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  display: none;
+  min-width: 300px;
+}
+
+.layout-selector.active {
+  display: block;
+  animation: slideIn 0.3s ease;
+}
+
+.layout-selector-header {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.layout-selector-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.layout-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.layout-option:hover {
+  border-color: var(--accent);
+  background: rgba(74, 163, 255, 0.1);
+}
+
+.layout-option.active {
+  border-color: var(--ok);
+  background: rgba(74, 255, 181, 0.1);
+}
+
+.layout-option-icon {
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+
+.layout-option-name {
+  font-size: 11px;
+  text-transform: capitalize;
+}
+
+/* Master-Stack Layout Specific */
+.master-panel {
+  border-right: 2px solid var(--accent) !important;
+}
+
+.stack-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+}
+
+/* Keyboard Shortcuts Hint */
+.keyboard-hint {
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 10px;
+  color: var(--muted);
+  z-index: 900;
+  transition: all 0.3s ease;
+  opacity: 0.4;
+}
+
+.keyboard-hint:hover {
+  opacity: 1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.keyboard-hint .hint-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--text);
+}
+
+.keyboard-hint .hint-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 2px 0;
+}
+
+.keyboard-hint .key {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 9px;
+  border: 1px solid var(--border);
+}
+
+/* Animations */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* Panel Transitions for Layout Changes */
+.agents-section {
+  transition: all 0.3s ease;
+}
+
+.agents-section.tiling-grid {
+  display: grid !important;
+  gap: 8px;
+}
+
+.agents-section.tiling-horizontal {
+  display: flex !important;
+  flex-direction: row;
+  gap: 8px;
+}
+
+.agents-section.tiling-vertical {
+  display: flex !important;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agents-section.tiling-master-stack {
+  display: flex !important;
+  flex-direction: row;
+  gap: 8px;
+}
+
+/* Override default panel grid */
+#agents-grid.tiling-enabled {
+  display: flex !important;
+  gap: 8px;
+  padding: 8px;
+  height: 100%;
+}
+
+/* Ensure panels fill their containers properly */
+.tiled-panel .log {
+  flex: 1;
+  min-height: 0;
+}
+
+.tiled-panel .composer {
+  flex-shrink: 0;
+}
+
+/* Focus ring animation */
+@keyframes focusPulse {
+  0% {
+    box-shadow: 0 0 0 2px rgba(74, 163, 255, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(74, 163, 255, 0.3);
+  }
+  100% {
+    box-shadow: 0 0 0 2px rgba(74, 163, 255, 0.2);
+  }
+}
+
+.tiled-panel.tiled-focused {
+  animation: focusPulse 2s infinite;
+}
+
+/* Minimize indicator in header */
+.tiled-panel .minimize-indicator {
+  display: none;
+  background: var(--warning);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-left: auto;
+}
+
+.tiled-panel.tiled-minimized ~ .minimize-indicator {
+  display: block;
+}
+
+/* Responsive adjustments for tiling */
+@media (max-width: 768px) {
+  #agents-grid.tiling-enabled {
+    /* Force vertical layout on mobile */
+    flex-direction: column !important;
+  }
+  
+  .layout-indicator {
+    display: none;
+  }
+  
+  .keyboard-hint {
+    display: none;
+  }
+}
+
+/* Layout transition effects */
+.tiled-panel {
+  animation: tileSlide 0.3s ease;
+}
+
+@keyframes tileSlide {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Status bar for tiling info */
+.tiling-status-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  padding: 4px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--muted);
+  z-index: 800;
+}
+
+.tiling-status-bar .status-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tiling-status-bar .status-separator {
+  width: 1px;
+  height: 12px;
+  background: var(--border);
+  margin: 0 8px;
+}
+
+/* Quick layout switcher buttons */
+.layout-quick-switch {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+}
+
+.layout-quick-switch button {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.layout-quick-switch button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--accent);
+}
+
+.layout-quick-switch button.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
