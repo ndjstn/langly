@@ -166,15 +166,15 @@ def _parse_json_sources(payload: Any, limit: int) -> list[ResearchSource]:
 
 def _parse_html_sources(html_text: str, limit: int) -> list[ResearchSource]:
     sources: list[ResearchSource] = []
-    for block in re.findall(r"<article class=\\\"result[^\\\"]*\\\">(.*?)</article>", html_text, flags=re.DOTALL):
-        url_match = re.search(r'href=\\\"(https?://[^\\\"]+)\\\"', block)
+    for block in re.findall(r'<article class="result[^"]*">(.*?)</article>', html_text, flags=re.DOTALL):
+        url_match = re.search(r'href="(https?://[^"]+)"', block)
         title_match = re.search(r"<h3>.*?<a[^>]*>(.*?)</a>", block, flags=re.DOTALL)
-        snippet_match = re.search(r"<p class=\\\"content\\\">(.*?)</p>", block, flags=re.DOTALL)
+        snippet_match = re.search(r'<p class="content">(.*?)</p>', block, flags=re.DOTALL)
         if not url_match:
             continue
         url = html.unescape(url_match.group(1))
         title = html.unescape(_strip_tags(title_match.group(1)) if title_match else url)
-        snippet = html.unescape(_strip_tags(snippet_match.group(1)) if snippet_match else \"\") or None
+        snippet = html.unescape(_strip_tags(snippet_match.group(1)) if snippet_match else "") or None
         sources.append(ResearchSource(title=title, url=url, snippet=snippet))
         if len(sources) >= limit:
             break
@@ -182,4 +182,4 @@ def _parse_html_sources(html_text: str, limit: int) -> list[ResearchSource]:
 
 
 def _strip_tags(text: str) -> str:
-    return re.sub(r\"<[^>]+>\", \"\", text or \"\").strip()
+    return re.sub(r"<[^>]+>", "", text or "").strip()
