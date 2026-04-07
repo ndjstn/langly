@@ -546,11 +546,18 @@ async def run_harness(payload: HarnessRunRequest) -> HarnessRunResponse:
             progress=0.2,
         )
 
+        citations_required = (
+            payload.citations
+            if payload.citations is not None
+            else os.getenv("LANGLY_CITATIONS_DEFAULT", "false").lower() == "true"
+        )
         research_enabled = (
             payload.research
             if payload.research is not None
             else os.getenv("LANGLY_RESEARCH_DEFAULT", "false").lower() == "true"
         )
+        if citations_required and not research_enabled:
+            research_enabled = True
         research_plan = ResearchPolicy().plan(
             payload.message,
             scope.model_dump(),
@@ -615,11 +622,6 @@ async def run_harness(payload: HarnessRunRequest) -> HarnessRunResponse:
             payload.prompt_enhance
             if payload.prompt_enhance is not None
             else os.getenv("LANGLY_PROMPT_ENHANCE_DEFAULT", "true").lower() == "true"
-        )
-        citations_required = (
-            payload.citations
-            if payload.citations is not None
-            else os.getenv("LANGLY_CITATIONS_DEFAULT", "false").lower() == "true"
         )
         enhancer = PromptEnhancer()
 
