@@ -930,12 +930,33 @@ def _extract_paths(message: str) -> list[str]:
 
 
 def _extract_image_paths_from_message(message: str) -> list[str]:
-    paths = _extract_paths(message)
+    if not message:
+        return []
+    candidates: list[str] = []
+    attach_split = re.split(r"attachments:\\s*", message, flags=re.IGNORECASE, maxsplit=1)
+    if len(attach_split) > 1:
+        for line in attach_split[1].splitlines():
+            cleaned = line.strip().strip("`")
+            if cleaned:
+                candidates.append(cleaned)
+    candidates.extend(
+        re.findall(
+            r"([\\w./~-]+\\.(?:png|jpe?g|webp|bmp|gif))",
+            message,
+            flags=re.IGNORECASE,
+        )
+    )
+    candidates.extend(_extract_paths(message))
     images: list[str] = []
-    for path in paths:
+    seen: set[str] = set()
+    for path in candidates:
         lower = path.lower()
-        if lower.endswith((".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif")):
-            images.append(path)
+        if not lower.endswith((".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif")):
+            continue
+        if path in seen:
+            continue
+        seen.add(path)
+        images.append(path)
     return images
 
 

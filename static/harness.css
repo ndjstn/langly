@@ -7,6 +7,15 @@
   --line: #dce0e8;
   --muted: #6c6f85;
   --shadow: 0 12px 30px rgba(31, 26, 20, 0.12);
+  --surface: color-mix(in srgb, var(--panel) 90%, #ffffff 10%);
+  --surface-strong: color-mix(in srgb, var(--panel) 82%, #000 18%);
+  --bubble-assistant: color-mix(in srgb, var(--panel) 82%, #000 18%);
+  --bubble-system: color-mix(in srgb, var(--panel) 88%, #000 12%);
+  --bubble-user: var(--accent);
+  --bubble-user-ink: #fff;
+  --input-bg: #ffffff;
+  --input-ink: var(--ink);
+  --panel-border: color-mix(in srgb, var(--line) 75%, #000 25%);
 }
 
 body.theme-catppuccin { --bg:#eff1f5; --ink:#4c4f69; --accent:#ea76cb; --accent-2:#179299; --panel:#f7f7ff; --line:#dce0e8; --muted:#6c6f85; }
@@ -43,10 +52,22 @@ body {
 
 body.theme-dark {
   color: var(--ink);
+  --surface: color-mix(in srgb, var(--panel) 78%, #0b0f18 22%);
+  --surface-strong: color-mix(in srgb, var(--panel) 66%, #0b0f18 34%);
+  --bubble-assistant: color-mix(in srgb, var(--panel) 70%, #161b26 30%);
+  --bubble-system: color-mix(in srgb, var(--panel) 62%, #161b26 38%);
+  --input-bg: color-mix(in srgb, var(--panel) 70%, #0b0f18 30%);
+  --panel-border: color-mix(in srgb, var(--line) 60%, #000 40%);
 }
 
 body.theme-light {
   color: var(--ink);
+  --surface: color-mix(in srgb, var(--panel) 92%, #000 8%);
+  --surface-strong: color-mix(in srgb, var(--panel) 82%, #000 18%);
+  --bubble-assistant: color-mix(in srgb, var(--panel) 82%, #000 18%);
+  --bubble-system: color-mix(in srgb, var(--panel) 88%, #000 12%);
+  --input-bg: #ffffff;
+  --panel-border: color-mix(in srgb, var(--line) 75%, #000 25%);
 }
 
 header {
@@ -74,20 +95,11 @@ main {
 }
 
 .panel {
-  background: var(--panel);
-  background: color-mix(in srgb, var(--panel) 82%, #ffffff 18%);
-  border: 1px solid var(--line);
+  background: var(--surface);
+  border: 1px solid var(--panel-border);
   border-radius: 12px;
   padding: 16px;
   box-shadow: var(--shadow);
-}
-
-body.theme-light .panel {
-  background: color-mix(in srgb, var(--panel) 92%, #000 8%);
-}
-
-body.theme-dark .panel {
-  background: color-mix(in srgb, var(--panel) 85%, #ffffff 10%);
 }
 
 .panel.resizable {
@@ -142,7 +154,7 @@ body.theme-dark .panel {
 }
 
 .panel-stack details[open] summary {
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--surface-strong);
 }
 
 .panel-stack details.panel > div {
@@ -166,19 +178,10 @@ body.theme-dark .panel {
 .chat-window {
   height: 520px;
   overflow: auto;
-  border: 1px solid var(--line);
+  border: 1px solid var(--panel-border);
   padding: 12px;
   border-radius: 10px;
-  background: var(--panel);
-  background: color-mix(in srgb, var(--panel) 78%, #ffffff 22%);
-}
-
-body.theme-dark .chat-window {
-  background: color-mix(in srgb, var(--panel) 70%, #0b0f18 30%);
-}
-
-body.theme-light .chat-window {
-  background: color-mix(in srgb, var(--panel) 95%, #000 5%);
+  background: var(--surface-strong);
 }
 
 .attachments {
@@ -198,8 +201,8 @@ body.theme-light .chat-window {
   gap: 6px;
   padding: 8px;
   border-radius: 10px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid var(--panel-border);
+  background: var(--surface);
 }
 
 .attachment-path {
@@ -213,8 +216,8 @@ body.theme-light .chat-window {
   gap: 8px;
   padding: 6px 10px;
   border-radius: 999px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--panel-border);
+  background: var(--surface);
   cursor: pointer;
 }
 
@@ -234,29 +237,21 @@ body.theme-light .chat-window {
 
 .msg.user {
   margin-left: auto;
-  background: var(--accent);
-  color: #fff;
-  border: 1px solid var(--accent);
+  background: var(--bubble-user);
+  color: var(--bubble-user-ink);
+  border: 1px solid var(--bubble-user);
   border-bottom-right-radius: 6px;
 }
 
 .msg.system {
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid var(--line);
+  background: var(--bubble-system);
+  border: 1px solid var(--panel-border);
 }
 
 .msg.assistant {
-  background: rgba(255, 255, 255, 0.8);
-  border: 1px solid var(--line);
+  background: var(--bubble-assistant);
+  border: 1px solid var(--panel-border);
   border-bottom-left-radius: 6px;
-}
-
-body.theme-dark .msg.assistant {
-  background: color-mix(in srgb, var(--panel) 80%, #1b1f2a 20%);
-}
-
-body.theme-dark .msg.system {
-  background: color-mix(in srgb, var(--panel) 75%, #1b1f2a 25%);
 }
 
 .msg.assistant a {
@@ -284,9 +279,11 @@ body.theme-dark .msg.system {
   flex: 1;
   padding: 10px;
   border-radius: 8px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--panel-border);
   min-height: 72px;
   font-family: inherit;
+  background: var(--input-bg);
+  color: var(--input-ink);
 }
 
 .controls button {
@@ -314,16 +311,18 @@ body.theme-dark .msg.system {
 select {
   padding: 6px 8px;
   border-radius: 6px;
-  border: 1px solid var(--line);
-  background: #fff;
+  border: 1px solid var(--panel-border);
+  background: var(--input-bg);
+  color: var(--input-ink);
 }
 
 .selectors input[type="number"] {
   width: 70px;
   padding: 6px 8px;
   border-radius: 6px;
-  border: 1px solid var(--line);
-  background: #fff;
+  border: 1px solid var(--panel-border);
+  background: var(--input-bg);
+  color: var(--input-ink);
 }
 
 .selectors label {
@@ -342,15 +341,11 @@ select {
 }
 
 .tag {
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid var(--line);
+  background: var(--surface);
+  border: 1px solid var(--panel-border);
   padding: 4px 8px;
   border-radius: 999px;
   font-size: 12px;
-}
-
-body.theme-dark .tag {
-  background: color-mix(in srgb, var(--panel) 70%, #101522 30%);
 }
 
 pre {
@@ -386,18 +381,14 @@ pre {
   gap: 10px;
   padding: 6px 8px;
   border-radius: 8px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid var(--panel-border);
+  background: var(--surface);
   cursor: pointer;
   font-size: 12px;
 }
 
 .file-item:hover {
-  background: rgba(255, 255, 255, 0.9);
-}
-
-body.theme-dark .file-item {
-  background: color-mix(in srgb, var(--panel) 70%, #111624 30%);
+  background: var(--surface-strong);
 }
 
 body.theme-dark .file-item:hover {

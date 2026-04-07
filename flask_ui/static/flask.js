@@ -298,6 +298,12 @@ const runHarness = async () => {
     task_capture: checked('task_capture'),
     task_templates: checked('task_templates')
   };
+  const autoTools = Array.from(document.querySelectorAll('.auto-tool'))
+    .filter((el) => el.checked)
+    .map((el) => el.value);
+  if (autoTools.length) {
+    payload.auto_tools = autoTools;
+  }
 
   const resp = await fetch('/run', {
     method: 'POST',
