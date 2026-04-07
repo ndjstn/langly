@@ -668,25 +668,37 @@ class VisionToolRunner(ToolRunner):
                 encoded = base64.b64encode(data).decode("utf-8")
                 payload = {
                     "model": self.model,
-                    "messages": [{"role": "user", "content": self.prompt}],
-                    "images": [encoded],
+                    "messages": [
+                        {"role": "user", "content": self.prompt, "images": [encoded]},
+                    ],
                     "stream": False,
                 }
                 with httpx.Client(base_url=self.host, timeout=60) as client:
                     resp = client.post("/api/chat", json=payload)
                     resp.raise_for_status()
                     result = resp.json()
-                outputs.append(
-                    {
-                        "path": str(path),
-                        "response": result.get("message", {}).get("content", ""),
-                        "model": self.model,
-                    }
-                )
+                content = result.get("message", {}).get("content", "")
+                if _vision_refused(content):
+                    outputs.append(
+                        {
+                            "path": str(path),
+                            "error": "vision_model_did_not_process_image",
+                            "response": content,
+                            "model": self.model,
+                        }
+                    )
+                else:
+                    outputs.append(
+                        {
+                            "path": str(path),
+                            "response": content,
+                            "model": self.model,
+                        }
+                    )
             except Exception as exc:
                 outputs.append({"path": str(path), "error": str(exc)})
         duration_ms = (time.time() - start) * 1000
-        status = "ok" if any("response" in item for item in outputs) else "error"
+        status = "ok" if any(item.get("response") for item in outputs) else "error"
         return ToolResult(
             name="vision",
             status=status,
@@ -1161,3 +1173,8 @@ def _scan_python_symbols(path: Path) -> dict[str, list[str]]:
         elif isinstance(node, ast.FunctionDef):
             functions.append(node.name)
     return {"classes": classes[:50], "functions": functions[:50]}
+
+
+def _vision_refused(content: str) -> bool:
+    lowered = (content or "").lower()
+    return "can't" in lowered and ("image" in lowered or "view" in lowered or "analyze" in lowered)
