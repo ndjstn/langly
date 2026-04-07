@@ -113,6 +113,12 @@ def _summarize_tools(tool_results: list[dict[str, Any]]) -> str:
                 lines.append(f"- {name}: {summary}")
             else:
                 lines.append(f"- {name}: {status}")
+        elif name == "file_read" and output:
+            summary = _summarize_file_read(output)
+            if summary:
+                lines.append(f"- {name}: {summary}")
+            else:
+                lines.append(f"- {name}: {status}")
         else:
             lines.append(f"- {name}: {status}")
     return "\n".join(lines)
@@ -151,3 +157,19 @@ def _has_image(message: str) -> bool:
     if "attachment" in lowered or "screenshot" in lowered or "image" in lowered or "photo" in lowered:
         return True
     return bool(re.search(r"\.(png|jpe?g|webp|bmp|gif)\b", lowered))
+
+
+def _summarize_file_read(output: Any) -> str:
+    try:
+        files = output.get("files") if isinstance(output, dict) else None
+        if not files:
+            return ""
+        first = files[0]
+        path = first.get("path") or ""
+        content = first.get("content") or ""
+        snippet = " ".join(content.strip().split())[:240]
+        if snippet:
+            return f"{path} snippet: {snippet}"
+        return f"{path} read"
+    except Exception:
+        return ""
