@@ -30,12 +30,17 @@ class ResponsePostProcessor:
         updated = response
         added = False
 
-        if enforce_citations and research and research.sources:
+        if enforce_citations:
+            if not research or not research.sources:
+                warnings.append("citations_required_no_sources")
+                updated = (
+                    "Citations required, but no research sources were available from Searx.\n"
+                    "Please ensure Searx is reachable and has engines enabled, then retry."
+                )
+                return PostprocessResult(response=updated, citations_added=False, warnings=warnings)
             if not CITATION_RE.search(response):
                 sources_block = render_sources(research.sources)
-                updated = (
-                    f"{response.strip()}\n\nSources:\n{sources_block}"
-                )
+                updated = f"{response.strip()}\n\nSources:\n{sources_block}"
                 added = True
                 warnings.append("citations_missing_added_sources")
         return PostprocessResult(response=updated, citations_added=added, warnings=warnings)
