@@ -590,10 +590,50 @@ class PreflightToolRunner(ToolRunner):
         return ToolResult(name="preflight", status="ok", output={"files": results}, duration_ms=duration_ms)
 
 
+class FileReadToolRunner(ToolRunner):
+    def __init__(self, retry_policy: RetryPolicy) -> None:
+        super().__init__("file_read", retry_policy)
+        self.max_bytes = int(os.getenv("LANGLY_FILE_READ_MAX_BYTES", "20000"))
+        self.max_files = int(os.getenv("LANGLY_FILE_READ_MAX_FILES", "2"))
+
+    def run(self, context: HarnessToolContext) -> ToolResult:
+        start = time.time()
+        paths = _extract_paths(context.message)
+        results: list[dict[str, Any]] = []
+        for path in paths[: self.max_files]:
+            p = Path(path).expanduser()
+            if not p.exists() or not p.is_file():
+                results.append({"path": path, "error": "file not found"})
+                continue
+            try:
+                data = p.read_bytes()
+                truncated = False
+                if len(data) > self.max_bytes:
+                    data = data[: self.max_bytes]
+                    truncated = True
+                if b\"\\x00\" in data:
+                    results.append({\"path\": str(p), \"binary\": True, \"truncated\": truncated})
+                    continue
+                text = data.decode(\"utf-8\", errors=\"replace\")
+                results.append(
+                    {
+                        \"path\": str(p),
+                        \"truncated\": truncated,
+                        \"lines\": text.count(\"\\n\") + 1,
+                        \"content\": text,
+                    }
+                )
+            except Exception as exc:
+                results.append({\"path\": str(p), \"error\": str(exc)})
+        duration_ms = (time.time() - start) * 1000
+        status = \"ok\" if results else \"skipped\"
+        return ToolResult(name=\"file_read\", status=status, output={\"files\": results}, duration_ms=duration_ms)
+
+
 class VisionToolRunner(ToolRunner):
     def __init__(self, retry_policy: RetryPolicy) -> None:
         super().__init__("vision", retry_policy)
-        self.model = os.getenv("LANGLY_VISION_MODEL", "").strip()
+        self.model = os.getenv("LANGLY_VISION_MODEL", "granite3.2-vision:latest").strip()
         self.prompt = os.getenv(
             "LANGLY_VISION_PROMPT",
             "Describe the image, extract any text, and summarize key details.",
@@ -876,7 +916,7 @@ class AutoToolRunner:
             t.strip()
             for t in os.getenv(
                 "LANGLY_AUTO_TOOLS",
-                "greptile,lint,jj,taskwarrior,preflight,mermaid,vision,vision_pipeline",
+                "greptile,lint,jj,taskwarrior,preflight,file_read,mermaid,vision,vision_pipeline",
             ).split(",")
             if t.strip()
         ]
@@ -892,6 +932,7 @@ class AutoToolRunner:
             "chrome_devtools": int(os.getenv("LANGLY_TOOL_RETRY_CHROME_DEVTOOLS", "0")),
             "taskwarrior_mcp": int(os.getenv("LANGLY_TOOL_RETRY_TASK_MCP", "0")),
             "preflight": int(os.getenv("LANGLY_TOOL_RETRY_PREFLIGHT", "0")),
+            "file_read": int(os.getenv("LANGLY_TOOL_RETRY_FILE_READ", "0")),
             "mermaid": int(os.getenv("LANGLY_TOOL_RETRY_MERMAID", "0")),
             "vision": int(os.getenv("LANGLY_TOOL_RETRY_VISION", "0")),
             "vision_pipeline": int(os.getenv("LANGLY_TOOL_RETRY_VISION_PIPELINE", "0")),
@@ -952,6 +993,8 @@ class AutoToolRunner:
             registry.register(MCPTaskwarriorToolRunner(task_mcp_url, self._policy_for("taskwarrior_mcp")))
 
         registry.register(PreflightToolRunner(self._policy_for("preflight")))
+
+        registry.register(FileReadToolRunner(self._policy_for("file_read")))
 
         registry.register(VisionToolRunner(self._policy_for("vision")))
 

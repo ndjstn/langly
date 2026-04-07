@@ -32,10 +32,14 @@ class ResponsePostProcessor:
 
         if enforce_citations:
             if not research or not research.sources:
+                error_detail = ""
+                if research and research.error:
+                    error_detail = f"\nResearch error: {research.error}"
                 warnings.append("citations_required_no_sources")
                 updated = (
                     "Citations required, but no research sources were available from Searx.\n"
                     "Please ensure Searx is reachable and has engines enabled, then retry."
+                    f"{error_detail}"
                 )
                 return PostprocessResult(response=updated, citations_added=False, warnings=warnings)
             if not CITATION_RE.search(response):

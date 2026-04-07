@@ -72,6 +72,8 @@ class ToolSelectionPolicy:
 
         if _has_path(message):
             selected.add("preflight")
+            if "file_read" in available:
+                selected.add("file_read")
 
         for tool in list(selected):
             if tool not in available:

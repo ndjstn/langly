@@ -546,6 +546,7 @@ const renderToolGlossary = (tools) => {
     taskwarrior: "Summarizes Taskwarrior backlog and capture.",
     taskwarrior_mcp: "Taskwarrior MCP actions (if configured).",
     preflight: "Checks file paths, types, and metadata.",
+    file_read: "Reads file contents (limited) for analysis.",
     mermaid: "Generates a quick reasoning graph from keywords.",
     vision: "Calls a vision LLM on attached images.",
     vision_pipeline: "YOLO-based detection/segmentation pipeline.",
