@@ -74,6 +74,23 @@ def get_checkpointer(
         raise ValueError(f"Unsupported storage type: {storage_type}")
 
 
+def create_checkpointer(
+    storage_type: str = "memory",
+    **kwargs: Any,
+) -> BaseCheckpointSaver[Any]:
+    """
+    Backward-compatible wrapper for creating a checkpointer.
+
+    Args:
+        storage_type: Type of storage ("memory", "sqlite", "postgres").
+        **kwargs: Additional arguments for the specific checkpointer.
+
+    Returns:
+        A configured checkpointer instance.
+    """
+    return get_checkpointer(storage_type=storage_type, **kwargs)
+
+
 class CheckpointManager:
     """
     Manager class for handling checkpoint operations.

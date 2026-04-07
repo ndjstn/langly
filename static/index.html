@@ -1,1029 +1,247 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Langly - Multi-Agent Coding Platform</title>
-    
-    <!-- Styles -->
-    <link rel="stylesheet" href="/static/panel-system.css">
-    <link rel="stylesheet" href="/static/tiling-manager.css">
-    <style>
-        /* CSS Variables */
-        :root {
-            --bg: #0d1117;
-            --panel: #161b22;
-            --border: #30363d;
-            --text: #e6edf3;
-            --muted: #7d8590;
-            --accent: #58a6ff;
-            --ok: #238636;
-            --warning: #d29922;
-            --danger: #f85149;
-        }
-
-        /* Reset */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Header */
-        .app-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px 20px;
-            background: var(--panel);
-            border-bottom: 1px solid var(--border);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        .app-logo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .app-logo h1 {
-            font-size: 20px;
-            font-weight: 600;
-        }
-
-        .app-logo-icon {
-            font-size: 24px;
-        }
-
-        .header-controls {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .header-btn {
-            background: transparent;
-            border: 1px solid var(--border);
-            color: var(--text);
-            padding: 6px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: all 0.2s;
-        }
-
-        .header-btn:hover {
-            background: var(--accent);
-            border-color: var(--accent);
-            color: white;
-        }
-
-        .status-indicator {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 12px;
-            color: var(--muted);
-        }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--ok);
-        }
-
-        .status-dot.warning { background: var(--warning); }
-        .status-dot.error { background: var(--danger); }
-        .status-dot.offline { background: var(--muted); }
-
-        /* Main Layout */
-        .app-main {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-        }
-
-        /* Sidebar */
-        .sidebar {
-            width: 240px;
-            background: var(--panel);
-            border-right: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-            flex-shrink: 0;
-        }
-
-        .sidebar-nav {
-            padding: 12px;
-            flex: 1;
-        }
-
-        .nav-section {
-            margin-bottom: 24px;
-        }
-
-        .nav-section-title {
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            color: var(--muted);
-            padding: 8px 12px;
-            letter-spacing: 0.5px;
-        }
-
-        .nav-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            color: var(--text);
-            text-decoration: none;
-            font-size: 13px;
-            transition: all 0.2s;
-        }
-
-        .nav-item:hover {
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .nav-item.active {
-            background: rgba(88, 166, 255, 0.15);
-            color: var(--accent);
-        }
-
-        .nav-item-icon {
-            font-size: 16px;
-            width: 20px;
-            text-align: center;
-        }
-
-        .nav-item-badge {
-            margin-left: auto;
-            background: var(--danger);
-            color: white;
-            font-size: 10px;
-            padding: 2px 6px;
-            border-radius: 10px;
-        }
-
-        /* Content Area */
-        .content-area {
-            flex: 1;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Tab Bar */
-        .tab-bar {
-            display: flex;
-            align-items: center;
-            padding: 8px 16px;
-            background: rgba(0, 0, 0, 0.2);
-            border-bottom: 1px solid var(--border);
-            gap: 4px;
-        }
-
-        .tab-item {
-            padding: 6px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-            color: var(--muted);
-            transition: all 0.2s;
-        }
-
-        .tab-item:hover {
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--text);
-        }
-
-        .tab-item.active {
-            background: var(--panel);
-            color: var(--accent);
-        }
-
-        /* Agents Grid */
-        #agents-grid {
-            flex: 1;
-            padding: 16px;
-            overflow: auto;
-        }
-
-        /* Agent Card */
-        .agent-card {
-            padding: 16px;
-        }
-
-        .agent-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 12px;
-        }
-
-        .agent-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            background: rgba(88, 166, 255, 0.2);
-        }
-
-        .agent-info {
-            flex: 1;
-        }
-
-        .agent-name {
-            font-weight: 600;
-            font-size: 14px;
-        }
-
-        .agent-role {
-            font-size: 12px;
-            color: var(--muted);
-        }
-
-        .agent-status-badge {
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 10px;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .agent-status-badge.idle {
-            background: rgba(125, 133, 144, 0.2);
-            color: var(--muted);
-        }
-
-        .agent-status-badge.working {
-            background: rgba(88, 166, 255, 0.2);
-            color: var(--accent);
-        }
-
-        .agent-status-badge.waiting {
-            background: rgba(210, 153, 34, 0.2);
-            color: var(--warning);
-        }
-
-        .agent-stats {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
-            margin-top: 12px;
-        }
-
-        .stat-item {
-            background: rgba(0, 0, 0, 0.2);
-            padding: 8px;
-            border-radius: 4px;
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 18px;
-            font-weight: 600;
-        }
-
-        .stat-label {
-            font-size: 10px;
-            color: var(--muted);
-        }
-
-        /* Conversation Panel */
-        .conversation-content {
-            padding: 16px;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .messages-container {
-            flex: 1;
-            overflow-y: auto;
-            margin-bottom: 16px;
-        }
-
-        .message {
-            padding: 12px;
-            margin-bottom: 12px;
-            border-radius: 8px;
-            background: rgba(0, 0, 0, 0.2);
-        }
-
-        .message-header {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 8px;
-        }
-
-        .message-sender {
-            font-weight: 600;
-            font-size: 12px;
-        }
-
-        .message-time {
-            font-size: 10px;
-            color: var(--muted);
-        }
-
-        .message-body {
-            font-size: 13px;
-            line-height: 1.5;
-        }
-
-        .input-area {
-            display: flex;
-            gap: 8px;
-        }
-
-        .chat-input {
-            flex: 1;
-            background: var(--bg);
-            border: 1px solid var(--border);
-            color: var(--text);
-            padding: 10px 14px;
-            border-radius: 8px;
-            font-size: 13px;
-            resize: none;
-        }
-
-        .chat-input:focus {
-            outline: none;
-            border-color: var(--accent);
-        }
-
-        .send-btn {
-            background: var(--accent);
-            border: none;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-
-        .send-btn:hover {
-            background: #79b8ff;
-        }
-
-        /* Workflow Panel */
-        .workflow-content {
-            padding: 16px;
-        }
-
-        .workflow-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 8px;
-            margin-bottom: 8px;
-        }
-
-        .workflow-step {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            font-weight: 600;
-        }
-
-        .workflow-step.pending {
-            background: rgba(125, 133, 144, 0.3);
-        }
-
-        .workflow-step.active {
-            background: var(--accent);
-        }
-
-        .workflow-step.complete {
-            background: var(--ok);
-        }
-
-        .workflow-info {
-            flex: 1;
-        }
-
-        .workflow-title {
-            font-weight: 600;
-            font-size: 13px;
-        }
-
-        .workflow-desc {
-            font-size: 11px;
-            color: var(--muted);
-        }
-
-        /* Tools Panel */
-        .tools-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-            gap: 12px;
-            padding: 16px;
-        }
-
-        .tool-item {
-            padding: 16px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 8px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: 1px solid transparent;
-        }
-
-        .tool-item:hover {
-            border-color: var(--accent);
-            background: rgba(88, 166, 255, 0.1);
-        }
-
-        .tool-icon {
-            font-size: 28px;
-            margin-bottom: 8px;
-        }
-
-        .tool-name {
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        /* Interventions Panel */
-        .interventions-content {
-            padding: 16px;
-        }
-
-        .intervention-item {
-            padding: 16px;
-            background: rgba(210, 153, 34, 0.1);
-            border: 1px solid var(--warning);
-            border-radius: 8px;
-            margin-bottom: 12px;
-        }
-
-        .intervention-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 12px;
-        }
-
-        .intervention-icon {
-            font-size: 20px;
-        }
-
-        .intervention-title {
-            font-weight: 600;
-            font-size: 14px;
-        }
-
-        .intervention-body {
-            font-size: 13px;
-            margin-bottom: 12px;
-        }
-
-        .intervention-actions {
-            display: flex;
-            gap: 8px;
-        }
-
-        .intervention-btn {
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .intervention-btn.approve {
-            background: var(--ok);
-            border: none;
-            color: white;
-        }
-
-        .intervention-btn.reject {
-            background: transparent;
-            border: 1px solid var(--danger);
-            color: var(--danger);
-        }
-
-        .intervention-btn:hover {
-            opacity: 0.8;
-        }
-
-        /* Layout Controls */
-        .layout-controls {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .layout-btn {
-            background: transparent;
-            border: 1px solid var(--border);
-            color: var(--muted);
-            padding: 6px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-
-        .layout-btn:hover, .layout-btn.active {
-            border-color: var(--accent);
-            color: var(--accent);
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .sidebar {
-                display: none;
-            }
-        }
-
-        /* Code Block */
-        .code-block {
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 12px;
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-size: 12px;
-            overflow-x: auto;
-            margin: 8px 0;
-        }
-    </style>
-</head>
-<body>
-    <!-- Header -->
-    <header class="app-header">
-        <div class="app-logo">
-            <span class="app-logo-icon">🤖</span>
-            <h1>Langly</h1>
-        </div>
-        
-        <div class="header-controls">
-            <div class="status-indicator" id="system-status">
-                <span class="status-dot"></span>
-                <span>System Healthy</span>
-            </div>
-            
-            <div class="layout-controls">
-                <button class="layout-btn active" data-layout="grid" title="Grid Layout">⊞</button>
-                <button class="layout-btn" data-layout="horizontal" title="Horizontal">═</button>
-                <button class="layout-btn" data-layout="vertical" title="Vertical">║</button>
-                <button class="layout-btn" data-layout="master-stack" title="Master Stack">⊟</button>
-            </div>
-            
-            <button class="header-btn" id="new-task-btn">
-                <span>➕</span>
-                <span>New Task</span>
-            </button>
-        </div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Langly Harness</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;700&family=Space+Grotesk:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/harness.css" />
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  </head>
+  <body class="theme-catppuccin">
+    <header>
+      <h1>Langly Harness</h1>
+      <p>Single chat UI for scope-aware tool orchestration and Ollama routing.</p>
+      <label class="theme-select">
+        Theme
+        <select id="theme-select">
+          <option value="catppuccin">Catppuccin</option>
+          <option value="tokyonight">Tokyo Night</option>
+          <option value="kanagawa">Kanagawa</option>
+          <option value="rose-pine">Rose Pine</option>
+          <option value="nightfox">Nightfox</option>
+          <option value="onedark">OneDark</option>
+          <option value="gruvbox-material">Gruvbox Material</option>
+          <option value="github">GitHub</option>
+          <option value="everforest">Everforest</option>
+          <option value="vscode">VSCode</option>
+          <option value="cyberdream">Cyberdream</option>
+          <option value="onedarkpro">OneDark Pro</option>
+          <option value="material">Material</option>
+          <option value="dracula">Dracula</option>
+          <option value="nord">Nord</option>
+          <option value="oxocarbon">Oxocarbon</option>
+          <option value="solarized-osaka">Solarized Osaka</option>
+          <option value="sonokai">Sonokai</option>
+          <option value="nordic">Nordic</option>
+          <option value="moonfly">Moonfly</option>
+        </select>
+      </label>
     </header>
 
-    <!-- Main Content -->
-    <main class="app-main">
-        <!-- Sidebar Navigation -->
-        <aside class="sidebar">
-            <nav class="sidebar-nav">
-                <div class="nav-section">
-                    <div class="nav-section-title">Workspace</div>
-                    <a href="#" class="nav-item active">
-                        <span class="nav-item-icon">🏠</span>
-                        <span>Dashboard</span>
-                    </a>
-                    <a href="#" class="nav-item">
-                        <span class="nav-item-icon">📋</span>
-                        <span>Tasks</span>
-                        <span class="nav-item-badge">3</span>
-                    </a>
-                    <a href="#" class="nav-item">
-                        <span class="nav-item-icon">🔄</span>
-                        <span>Workflows</span>
-                    </a>
-                </div>
-
-                <div class="nav-section">
-                    <div class="nav-section-title">Agents</div>
-                    <a href="#" class="nav-item">
-                        <span class="nav-item-icon">👔</span>
-                        <span>PM Agent</span>
-                    </a>
-                    <a href="#" class="nav-item">
-                        <span class="nav-item-icon">💻</span>
-                        <span>Coder</span>
-                    </a>
-                    <a href="#" class="nav-item">
-                        <span class="nav-item-icon">🏗️</span>
-                        <span>Architect</span>
-                    </a>
-                    <a href="#" class="nav-item">
-                        <span class="nav-item-icon">🧪</span>
-                        <span>Tester</span>
-                    </a>
-                    <a href="#" class="nav-item">
-                        <span class="nav-item-icon">🔍</span>
-                        <span>Reviewer</span>
-                    </a>
-                </div>
-
-                <div class="nav-section">
-                    <div class="nav-section-title">Configuration</div>
-                    <a href="#" class="nav-item">
-                        <span class="nav-item-icon">🔧</span>
-                        <span>Tools</span>
-                    </a>
-                    <a href="#" class="nav-item">
-                        <span class="nav-item-icon">💾</span>
-                        <span>Memory</span>
-                    </a>
-                    <a href="#" class="nav-item">
-                        <span class="nav-item-icon">⚙️</span>
-                        <span>Settings</span>
-                    </a>
-                </div>
-
-                <div class="nav-section">
-                    <div class="nav-section-title">Human in the Loop</div>
-                    <a href="#" class="nav-item" id="interventions-nav">
-                        <span class="nav-item-icon">🖐️</span>
-                        <span>Interventions</span>
-                        <span class="nav-item-badge" id="interventions-count">0</span>
-                    </a>
-                    <a href="#" class="nav-item">
-                        <span class="nav-item-icon">✅</span>
-                        <span>Approvals</span>
-                    </a>
-                    <a href="#" class="nav-item">
-                        <span class="nav-item-icon">⏪</span>
-                        <span>Time Travel</span>
-                    </a>
-                </div>
-            </nav>
-        </aside>
-
-        <!-- Content Area -->
-        <div class="content-area">
-            <!-- Tab Bar -->
-            <div class="tab-bar">
-                <div class="tab-item active" data-tab="agents">Agents</div>
-                <div class="tab-item" data-tab="conversation">Conversation</div>
-                <div class="tab-item" data-tab="workflow">Workflow</div>
-                <div class="tab-item" data-tab="tools">Tools</div>
+    <main>
+      <section class="chat-column">
+        <div class="panel chat-panel resizable">
+          <div class="panel-header">
+            <h2>Chat</h2>
+            <span class="panel-hint">Streaming tokens + formatted output</span>
+          </div>
+          <div class="panel-body">
+            <div id="chat-window" class="chat-window"></div>
+            <div class="attachments">
+              <div id="attachments-list"></div>
+              <label class="upload-btn">
+                Attach image
+                <input id="file-input" type="file" accept="image/*" />
+              </label>
             </div>
-
-            <!-- Panels Grid -->
-            <div id="agents-grid" class="panels-container">
-                <!-- PM Agent Panel -->
-                <div class="panel draggable-panel" data-panel-id="pm-agent">
-                    <div class="panel-header">
-                        <div class="panel-title">
-                            <span class="drag-handle">⋮⋮</span>
-                            <span class="panel-icon">👔</span>
-                            <span class="panel-name">Project Manager</span>
-                        </div>
-                        <div class="panel-controls">
-                            <button class="panel-btn minimize-btn" title="Minimize">−</button>
-                            <button class="panel-btn maximize-btn" title="Maximize">□</button>
-                            <button class="panel-btn close-btn" title="Close">×</button>
-                        </div>
-                    </div>
-                    <div class="panel-body">
-                        <div class="agent-card">
-                            <div class="agent-header">
-                                <div class="agent-avatar">👔</div>
-                                <div class="agent-info">
-                                    <div class="agent-name">PM Agent</div>
-                                    <div class="agent-role">granite3.1-dense:8b</div>
-                                </div>
-                                <span class="agent-status-badge working">Working</span>
-                            </div>
-                            <div class="agent-stats">
-                                <div class="stat-item">
-                                    <div class="stat-value">12</div>
-                                    <div class="stat-label">Tasks Managed</div>
-                                </div>
-                                <div class="stat-item">
-                                    <div class="stat-value">94%</div>
-                                    <div class="stat-label">Success Rate</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="resize-handle"></div>
-                </div>
-
-                <!-- Coder Agent Panel -->
-                <div class="panel draggable-panel" data-panel-id="coder-agent">
-                    <div class="panel-header">
-                        <div class="panel-title">
-                            <span class="drag-handle">⋮⋮</span>
-                            <span class="panel-icon">💻</span>
-                            <span class="panel-name">Coder Agent</span>
-                        </div>
-                        <div class="panel-controls">
-                            <button class="panel-btn minimize-btn" title="Minimize">−</button>
-                            <button class="panel-btn maximize-btn" title="Maximize">□</button>
-                            <button class="panel-btn close-btn" title="Close">×</button>
-                        </div>
-                    </div>
-                    <div class="panel-body">
-                        <div class="agent-card">
-                            <div class="agent-header">
-                                <div class="agent-avatar">💻</div>
-                                <div class="agent-info">
-                                    <div class="agent-name">Coder Agent</div>
-                                    <div class="agent-role">granite-code:8b</div>
-                                </div>
-                                <span class="agent-status-badge idle">Idle</span>
-                            </div>
-                            <div class="agent-stats">
-                                <div class="stat-item">
-                                    <div class="stat-value">48</div>
-                                    <div class="stat-label">Lines Written</div>
-                                </div>
-                                <div class="stat-item">
-                                    <div class="stat-value">3</div>
-                                    <div class="stat-label">Files Modified</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="resize-handle"></div>
-                </div>
-
-                <!-- Conversation Panel -->
-                <div class="panel draggable-panel" data-panel-id="conversation">
-                    <div class="panel-header">
-                        <div class="panel-title">
-                            <span class="drag-handle">⋮⋮</span>
-                            <span class="panel-icon">💬</span>
-                            <span class="panel-name">Conversation</span>
-                        </div>
-                        <div class="panel-controls">
-                            <button class="panel-btn minimize-btn" title="Minimize">−</button>
-                            <button class="panel-btn maximize-btn" title="Maximize">□</button>
-                            <button class="panel-btn close-btn" title="Close">×</button>
-                        </div>
-                    </div>
-                    <div class="panel-body">
-                        <div class="conversation-content">
-                            <div class="messages-container" id="messages">
-                                <div class="message">
-                                    <div class="message-header">
-                                        <span class="message-sender">👤 You</span>
-                                        <span class="message-time">2 min ago</span>
-                                    </div>
-                                    <div class="message-body">
-                                        Please implement a REST API endpoint for user authentication.
-                                    </div>
-                                </div>
-                                <div class="message">
-                                    <div class="message-header">
-                                        <span class="message-sender">👔 PM Agent</span>
-                                        <span class="message-time">1 min ago</span>
-                                    </div>
-                                    <div class="message-body">
-                                        I understand. I will delegate this task to the Coder Agent with architecture guidance from the Architect Agent. Expected components: JWT authentication, password hashing, token refresh endpoints.
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="input-area">
-                                <textarea class="chat-input" id="chat-input" placeholder="Type your message..." rows="2"></textarea>
-                                <button class="send-btn" id="send-btn">Send</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="resize-handle"></div>
-                </div>
-
-                <!-- Workflow Panel -->
-                <div class="panel draggable-panel" data-panel-id="workflow">
-                    <div class="panel-header">
-                        <div class="panel-title">
-                            <span class="drag-handle">⋮⋮</span>
-                            <span class="panel-icon">🔄</span>
-                            <span class="panel-name">Active Workflow</span>
-                        </div>
-                        <div class="panel-controls">
-                            <button class="panel-btn minimize-btn" title="Minimize">−</button>
-                            <button class="panel-btn maximize-btn" title="Maximize">□</button>
-                            <button class="panel-btn close-btn" title="Close">×</button>
-                        </div>
-                    </div>
-                    <div class="panel-body">
-                        <div class="workflow-content">
-                            <div class="workflow-item">
-                                <div class="workflow-step complete">✓</div>
-                                <div class="workflow-info">
-                                    <div class="workflow-title">Task Received</div>
-                                    <div class="workflow-desc">PM Agent parsed user request</div>
-                                </div>
-                            </div>
-                            <div class="workflow-item">
-                                <div class="workflow-step complete">✓</div>
-                                <div class="workflow-info">
-                                    <div class="workflow-title">Architecture Review</div>
-                                    <div class="workflow-desc">Architect Agent designed solution</div>
-                                </div>
-                            </div>
-                            <div class="workflow-item">
-                                <div class="workflow-step active">3</div>
-                                <div class="workflow-info">
-                                    <div class="workflow-title">Implementation</div>
-                                    <div class="workflow-desc">Coder Agent writing code...</div>
-                                </div>
-                            </div>
-                            <div class="workflow-item">
-                                <div class="workflow-step pending">4</div>
-                                <div class="workflow-info">
-                                    <div class="workflow-title">Testing</div>
-                                    <div class="workflow-desc">Tester Agent will verify</div>
-                                </div>
-                            </div>
-                            <div class="workflow-item">
-                                <div class="workflow-step pending">5</div>
-                                <div class="workflow-info">
-                                    <div class="workflow-title">Code Review</div>
-                                    <div class="workflow-desc">Reviewer Agent will inspect</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="resize-handle"></div>
-                </div>
+            <div class="selectors">
+              <label>
+                Mode
+                <select id="mode-select">
+                  <option value="auto">auto</option>
+                  <option value="doing">doing</option>
+                  <option value="knowing">knowing</option>
+                </select>
+              </label>
+              <label>
+                Iterations
+                <input id="iterations-input" type="number" min="1" max="5" value="1" />
+              </label>
+              <label>
+                <input id="iterations-auto" type="checkbox" checked />
+                Auto iterations
+              </label>
+              <label>
+                <input id="ab-test-toggle" type="checkbox" checked />
+                A/B test
+              </label>
+              <label>
+                <input id="grade-toggle" type="checkbox" checked />
+                Grade output
+              </label>
+              <label>
+                <input id="research-toggle" type="checkbox" checked />
+                Research (Searx)
+              </label>
+              <label>
+                <input id="citations-toggle" type="checkbox" checked />
+                Enforce citations
+              </label>
+              <label>
+                <input id="prompt-toggle" type="checkbox" checked />
+                Prompt enhance
+              </label>
+              <label>
+                <input id="tuning-toggle" type="checkbox" checked />
+                Tuning
+              </label>
+              <label>
+                <input id="tool-selection-toggle" type="checkbox" checked />
+                Tool selection
+              </label>
+              <label>
+                <input id="task-capture-toggle" type="checkbox" checked />
+                Task capture
+              </label>
+              <label>
+                <input id="task-templates-toggle" type="checkbox" checked />
+                Task templates
+              </label>
+              <div>
+                <span>Auto tools</span>
+                <label><input type="checkbox" class="auto-tool" value="greptile" checked /> greptile</label>
+                <label><input type="checkbox" class="auto-tool" value="lint" checked /> lint</label>
+                <label><input type="checkbox" class="auto-tool" value="jj" checked /> jj</label>
+                <label><input type="checkbox" class="auto-tool" value="taskwarrior" checked /> taskwarrior</label>
+                <label><input type="checkbox" class="auto-tool" value="taskwarrior_mcp" checked /> taskwarrior_mcp</label>
+                <label><input type="checkbox" class="auto-tool" value="preflight" checked /> preflight</label>
+                <label><input type="checkbox" class="auto-tool" value="mermaid" checked /> mermaid</label>
+                <label><input type="checkbox" class="auto-tool" value="browser" checked /> browser</label>
+              </div>
             </div>
+            <div class="controls">
+              <textarea id="message-input" placeholder="Ask anything. The harness will classify scope, run tools, and respond."></textarea>
+              <button id="send-btn">Send</button>
+            </div>
+          </div>
         </div>
+      </section>
+
+      <section class="panel-stack">
+        <details class="panel resizable" open>
+          <summary>Scope</summary>
+          <div id="scope-panel"></div>
+        </details>
+        <details class="panel resizable" open>
+          <summary>Status</summary>
+          <div id="status-panel"></div>
+        </details>
+        <details class="panel resizable" open>
+          <summary>Katas</summary>
+          <div id="katas-panel"></div>
+        </details>
+        <details class="panel resizable">
+          <summary>Research</summary>
+          <div id="research-panel"></div>
+        </details>
+        <details class="panel resizable">
+          <summary>Prompt Enhancements</summary>
+          <div id="prompt-panel"></div>
+        </details>
+        <details class="panel resizable">
+          <summary>Postprocess</summary>
+          <div id="postprocess-panel"></div>
+        </details>
+        <details class="panel resizable">
+          <summary>Task Capture</summary>
+          <div id="task-capture-panel"></div>
+        </details>
+        <details class="panel resizable">
+          <summary>Task Templates</summary>
+          <div id="task-templates-panel"></div>
+        </details>
+        <details class="panel resizable">
+          <summary>Taskwarrior</summary>
+          <div id="tasks-panel"></div>
+        </details>
+        <details class="panel resizable">
+          <summary>Kanban</summary>
+          <div id="kanban-panel"></div>
+        </details>
+        <details class="panel resizable">
+          <summary>Tool Selection</summary>
+          <div id="selection-panel"></div>
+        </details>
+        <details class="panel resizable">
+          <summary>Model Routing</summary>
+          <div id="routing-panel"></div>
+        </details>
+        <details class="panel resizable">
+          <summary>Iterations</summary>
+          <div id="iterations-panel"></div>
+        </details>
+        <details class="panel resizable">
+          <summary>Recovery</summary>
+          <div id="recovery-panel"></div>
+        </details>
+        <details class="panel resizable">
+          <summary>Tuning</summary>
+          <div id="tuning-panel"></div>
+        </details>
+        <details class="panel resizable">
+          <summary>Tool Reconfig</summary>
+          <div id="reconfig-panel"></div>
+        </details>
+        <details class="panel resizable">
+          <summary>A/B Test</summary>
+          <div id="abtest-panel"></div>
+        </details>
+        <details class="panel resizable">
+          <summary>Grade</summary>
+          <div id="grade-panel"></div>
+        </details>
+        <details class="panel resizable">
+          <summary>Timings</summary>
+          <div id="timings-panel"></div>
+        </details>
+        <details class="panel resizable">
+          <summary>Tools Used</summary>
+          <div id="tools-panel"></div>
+        </details>
+        <details class="panel resizable">
+          <summary>Trace</summary>
+          <div id="trace-panel"></div>
+        </details>
+        <details class="panel resizable">
+          <summary>Reasoning Graph</summary>
+          <div id="mermaid-panel"></div>
+        </details>
+        <details class="panel resizable">
+          <summary>Files</summary>
+          <div class="file-browser">
+            <div class="file-path" id="files-path"></div>
+            <div class="file-list" id="files-list"></div>
+            <pre class="file-viewer" id="file-viewer"></pre>
+          </div>
+        </details>
+        <details class="panel resizable">
+          <summary>Available Tools</summary>
+          <div id="available-tools"></div>
+        </details>
+      </section>
     </main>
 
-    <!-- Scripts -->
-    <script src="/static/panel-system.js"></script>
-    <script src="/static/tiling-manager.js"></script>
     <script>
-        // Initialize systems
-        document.addEventListener('DOMContentLoaded', () => {
-            // Initialize tiling manager
-            const container = document.getElementById('agents-grid');
-            const tilingManager = new TilingManager(container);
-            window.tilingManager = tilingManager;
-
-            // Layout buttons
-            document.querySelectorAll('.layout-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    document.querySelectorAll('.layout-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    tilingManager.setLayout(btn.dataset.layout);
-                });
-            });
-
-            // Chat functionality
-            const chatInput = document.getElementById('chat-input');
-            const sendBtn = document.getElementById('send-btn');
-            const messagesContainer = document.getElementById('messages');
-
-            const sendMessage = () => {
-                const message = chatInput.value.trim();
-                if (!message) return;
-
-                // Add user message
-                const userMsg = document.createElement('div');
-                userMsg.className = 'message';
-                userMsg.innerHTML = `
-                    <div class="message-header">
-                        <span class="message-sender">👤 You</span>
-                        <span class="message-time">Just now</span>
-                    </div>
-                    <div class="message-body">${message}</div>
-                `;
-                messagesContainer.appendChild(userMsg);
-                chatInput.value = '';
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-                // Send to API
-                fetch('/api/v1/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message })
-                })
-                .then(res => res.json())
-                .then(data => {
-                    const agentMsg = document.createElement('div');
-                    agentMsg.className = 'message';
-                    agentMsg.innerHTML = `
-                        <div class="message-header">
-                            <span class="message-sender">👔 PM Agent</span>
-                            <span class="message-time">Just now</span>
-                        </div>
-                        <div class="message-body">${data.response || 'Processing your request...'}</div>
-                    `;
-                    messagesContainer.appendChild(agentMsg);
-                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                })
-                .catch(err => {
-                    console.error('Chat error:', err);
-                });
-            };
-
-            sendBtn.addEventListener('click', sendMessage);
-            chatInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage();
-                }
-            });
-
-            // Health check polling
-            const updateHealth = async () => {
-                try {
-                    const res = await fetch('/health');
-                    const data = await res.json();
-                    
-                    const statusDot = document.querySelector('.status-dot');
-                    const statusText = document.querySelector('.status-indicator span:last-child');
-                    
-                    if (data.status === 'healthy') {
-                        statusDot.className = 'status-dot';
-                        statusText.textContent = 'System Healthy';
-                    } else if (data.status === 'degraded') {
-                        statusDot.className = 'status-dot warning';
-                        statusText.textContent = 'System Degraded';
-                    } else {
-                        statusDot.className = 'status-dot error';
-                        statusText.textContent = 'System Unhealthy';
-                    }
-                } catch (err) {
-                    const statusDot = document.querySelector('.status-dot');
-                    const statusText = document.querySelector('.status-indicator span:last-child');
-                    statusDot.className = 'status-dot offline';
-                    statusText.textContent = 'Connection Lost';
-                }
-            };
-
-            updateHealth();
-            setInterval(updateHealth, 30000);
-
-            // Tab switching
-            document.querySelectorAll('.tab-item').forEach(tab => {
-                tab.addEventListener('click', () => {
-                    document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
-                    tab.classList.add('active');
-                });
-            });
-
-            // WebSocket for real-time updates
-            let ws = null;
-            const connectWebSocket = () => {
-                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
-                
-                ws.onmessage = (event) => {
-                    const data = JSON.parse(event.data);
-                    
-                    if (data.type === 'agent_update') {
-                        // Update agent status
-                        console.log('Agent update:', data);
-                    } else if (data.type === 'intervention_required') {
-                        // Show intervention notification
-                        const count = document.getElementById('interventions-count');
-                        count.textContent = parseInt(count.textContent) + 1;
-                    }
-                };
-                
-                ws.onclose = () => {
-                    setTimeout(connectWebSocket, 5000);
-                };
-            };
-            
-            connectWebSocket();
-        });
+      if (window.mermaid) {
+        window.mermaid.initialize({ startOnLoad: false });
+      }
     </script>
-</body>
+    <script src="/static/harness.js"></script>
+  </body>
 </html>

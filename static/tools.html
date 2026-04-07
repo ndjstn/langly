@@ -959,11 +959,13 @@
         const configPanel = document.getElementById('config-panel');
         const closeConfigBtn = document.getElementById('close-config');
 
-        document.querySelectorAll('.tool-action-config').forEach(btn => {
-            btn.addEventListener('click', () => {
-                configPanel.classList.add('active');
+        const bindToolConfigButtons = () => {
+            document.querySelectorAll('.tool-action-config').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    configPanel.classList.add('active');
+                });
             });
-        });
+        };
 
         closeConfigBtn.addEventListener('click', () => {
             configPanel.classList.remove('active');
@@ -1003,66 +1005,76 @@
         });
 
         // Tool toggle
-        document.querySelectorAll('.tool-action-toggle').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const card = btn.closest('.tool-card');
-                const status = card.querySelector('.tool-status');
-                
-                if (status.classList.contains('enabled')) {
-                    status.classList.remove('enabled');
-                    status.classList.add('disabled');
-                    status.textContent = 'Disabled';
-                    btn.textContent = 'Enable';
-                    btn.classList.add('disabled');
-                } else {
-                    status.classList.remove('disabled');
-                    status.classList.add('enabled');
-                    status.textContent = 'Enabled';
-                    btn.textContent = 'Disable';
-                    btn.classList.remove('disabled');
-                }
+        const bindToolToggleButtons = () => {
+            document.querySelectorAll('.tool-action-toggle').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const card = btn.closest('.tool-card');
+                    const status = card.querySelector('.tool-status');
+                    
+                    if (status.classList.contains('enabled')) {
+                        status.classList.remove('enabled');
+                        status.classList.add('disabled');
+                        status.textContent = 'Disabled';
+                        btn.textContent = 'Enable';
+                        btn.classList.add('disabled');
+                    } else {
+                        status.classList.remove('disabled');
+                        status.classList.add('enabled');
+                        status.textContent = 'Enabled';
+                        btn.textContent = 'Disable';
+                        btn.classList.remove('disabled');
+                    }
+                });
             });
-        });
+        };
 
         // Submit new tool
         document.getElementById('submit-tool').addEventListener('click', async () => {
-            const toolData = {
-                name: document.getElementById('tool-name').value,
-                display_name: document.getElementById('tool-display-name').value,
-                category: document.getElementById('tool-category').value,
-                description: document.getElementById('tool-description').value,
-                implementation: document.getElementById('tool-implementation').value,
-                schema: document.getElementById('tool-schema').value
-            };
-
-            try {
-                const response = await fetch('/api/v1/tools', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(toolData)
-                });
-                
-                if (response.ok) {
-                    alert('Tool registered successfully!');
-                    addToolModal.classList.remove('active');
-                    location.reload();
-                } else {
-                    const error = await response.json();
-                    alert(`Error: ${error.detail || 'Failed to register tool'}`);
-                }
-            } catch (err) {
-                console.error('Error registering tool:', err);
-                alert('Failed to register tool. Please try again.');
-            }
+            alert('Tool registration is not supported in v2 yet.');
         });
 
         // Load tools from API
         async function loadTools() {
             try {
-                const response = await fetch('/api/v1/tools');
+                const response = await fetch('/api/v2/tools');
                 const tools = await response.json();
-                // Update UI with tools data
-                console.log('Loaded tools:', tools);
+                const list = tools.tools || [];
+                const grid = document.getElementById('tools-grid');
+
+                if (list.length) {
+                    grid.innerHTML = '';
+                    list.forEach(tool => {
+                        const approvalMeta = tool.requires_approval ? 'Requires approval' : 'No approval';
+                        const card = document.createElement('div');
+                        card.className = 'tool-card';
+                        card.dataset.toolId = tool.name;
+                        card.dataset.category = 'runtime';
+                        card.innerHTML = `
+                            <div class="tool-card-header">
+                                <div class="tool-icon">🧰</div>
+                                <div class="tool-info">
+                                    <div class="tool-name">${tool.name}</div>
+                                    <div class="tool-category">Runtime</div>
+                                </div>
+                                <span class="tool-status enabled">Enabled</span>
+                            </div>
+                            <div class="tool-card-body">
+                                <p class="tool-description">${tool.description || 'No description provided.'}</p>
+                                <div class="tool-meta">
+                                    <span class="tool-meta-item">🔐 ${approvalMeta}</span>
+                                </div>
+                            </div>
+                            <div class="tool-card-footer">
+                                <button class="tool-action tool-action-config">⚙️ Configure</button>
+                                <button class="tool-action tool-action-toggle">Disable</button>
+                            </div>
+                        `;
+                        grid.appendChild(card);
+                    });
+                }
+
+                bindToolConfigButtons();
+                bindToolToggleButtons();
             } catch (err) {
                 console.error('Error loading tools:', err);
             }
@@ -1072,6 +1084,8 @@
         document.getElementById('refresh-btn').addEventListener('click', loadTools);
 
         // Initial load
+        bindToolConfigButtons();
+        bindToolToggleButtons();
         loadTools();
     </script>
 </body>

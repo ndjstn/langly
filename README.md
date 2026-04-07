@@ -6,16 +6,20 @@ A production-grade, parallel multi-agent coding platform using LangChain, LangGr
 
 Langly is a hierarchical agent system where you interact as a business owner with a Project Manager agent, who coordinates specialized worker agents including Coder, Code Reviewer, Architect, Tester, and Documentation agents. Each agent operates as an independent node in a LangGraph StateGraph with its own scratchpad, tools, and role-specific prompts.
 
+The platform includes two runtimes: **V2** (LangGraph-based, production-ready) and **V3** (experimental graph-first runtime with event-sourced storage and small models).
+
 ## Features
 
 - **Hierarchical Multi-Agent Architecture**: PM Agent coordinates Coder, Architect, Tester, Reviewer, and Documentation agents
 - **Parallel Execution**: Independent tasks run concurrently using LangGraph's parallel branch nodes
 - **IBM Granite Models**: Leverages Granite Dense, MoE, Code, Guardian, and Embedding models via Ollama
-- **Graph-Based Memory**: Neo4j stores conversation history, project knowledge, and error patterns
-- **Human-in-the-Loop**: Intervention points for approvals, overrides, and time-travel debugging
-- **Tool Extensibility**: Dynamic tool registration with file system, code execution, git, and API tools
+- **Graph-Based Memory (V2)**: Neo4j stores conversation history, project knowledge, and error patterns
+- **Event-Sourced Storage (V3)**: Async SQLite with delta streaming for runs and tool calls
+- **Human-in-the-Loop**: HITL approvals with resume flow, intervention points, and time-travel debugging
+- **Tool Extensibility**: Typed tools with HITL approvals, dynamic registration, file system, code execution, git integration
 - **Reliability Systems**: Circuit breaker, loop detection, health checks, and graceful degradation
-- **Modern UI**: Draggable panel system with i3-style tiling window management
+- **Modern UI**: Chat-first streaming, collapsible panels, mermaid graphs, file navigator, copy buttons
+- **WebSocket Deltas**: Real-time run updates via `/api/v3/ws/deltas` (V3)
 
 ## Quick Start
 
@@ -23,7 +27,7 @@ Langly is a hierarchical agent system where you interact as a business owner wit
 
 - Python 3.12+
 - [Ollama](https://ollama.ai/) with IBM Granite models
-- [Neo4j](https://neo4j.com/) database
+- [Neo4j](https://neo4j.com/) database (required for v2 memory, optional for v3)
 - [uv](https://docs.astral.sh/uv/) package manager (recommended)
 
 ### Installation
@@ -42,7 +46,7 @@ pip install -e .
 
 ### Configure Environment
 
-Create a `.env` file in the project root:
+Create a `.env` file in the project root (you can start from `.env.example`):
 
 ```bash
 # Application
@@ -102,12 +106,167 @@ docker run -d \
 uvicorn app.api.app:app --reload --host 0.0.0.0 --port 8000
 ```
 
+Optional Flask UI:
+
+```bash
+python -m flask --app flask_ui.app --debug run --host 0.0.0.0 --port 5001
+```
+
 ### Access the Application
 
-- **Dashboard**: http://localhost:8000/static/index.html
-- **Tools Management**: http://localhost:8000/static/tools.html
-- **Interventions**: http://localhost:8000/static/interventions.html
+- **Chat Harness UI**: http://localhost:8000/static/index.html
+- **Flask Harness UI (optional)**: http://localhost:5001
 - **API Docs**: http://localhost:8000/docs
+  
+**Note**: The chat harness uses `/api/v2/harness/run` and streams deltas from `/api/v2/ws/deltas` or `/api/v3/ws/deltas`.
+
+**Auto tools**: The harness runs `greptile`, `lint`, `jj`, and `taskwarrior` by default (with optional MCP browser). Tool selection can prune these automatically; you can override in the UI.
+
+### Harness Enhancements (v2)
+
+- **Streaming tokens** in the chat window via `/api/v2/ws/deltas`
+- **Collapsible panels + file navigator** (`/api/v2/files/tree`, `/api/v2/files/read`, `/api/v2/files/upload`)
+- **Tool selection + reconfiguration** based on scope and JJ recovery plan
+- **Research + citations** with Searx (`LANGLY_SEARX_URL`) and optional citation enforcement
+- **Prompt enhancement** (current date, model cutoff, tool summary, sources)
+- **Batch tuning** for iterative improvements (`/api/v2/harness/batch`)
+- **MCP browser** tool support (Chrome DevTools or Playwright MCP servers)
+- **Task capture + templates** to surface checklists or sync to Taskwarrior (optional)
+- **Preflight** tool to check file paths quickly (non-LLM)
+- **Vision hooks** for MCP browser screenshots (optional command)
+
+Example batch run:
+
+```bash
+curl -s http://localhost:8000/api/v2/harness/batch \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "messages": ["Summarize the repo", "List failing tests"],
+    "grade": true,
+    "research": true,
+    "citations": true,
+    "tuning": true
+  }'
+```
+
+Or run the helper script:
+
+```bash
+python scripts/harness_batch.py --host http://localhost:8000 --tuning --research --citations
+```
+
+MCP browser script example (auto navigate + snapshot):
+
+```bash
+export LANGLY_MCP_BROWSER_URL=http://localhost:3001/mcp
+export LANGLY_MCP_BROWSER_AUTO=true
+```
+
+Vision pipeline example (runs after screenshots):
+
+```bash
+export LANGLY_VISION_PIPELINE_CMD="python scripts/vision_pipeline.py --image {{image}}"
+```
+
+Background monitoring helpers:
+
+```bash
+nohup scripts/ollama_watch.sh /tmp/ollama-watch.log 2 &
+nohup scripts/harness_loop.sh 10 /tmp/harness-loop.log &
+```
+
+### Memory + Notes (Zettelkasten)
+
+Langly can store and retrieve lightweight notes for katas, research summaries, and run retrospectives.
+
+- Notes API: `/api/v2/notes`
+- Design: `docs/memory-architecture.md`
+
+Environment knobs:
+
+```bash
+export LANGLY_ZK_DIR=./zettelkasten
+export LANGLY_FILE_ROOT=.
+export LANGLY_UPLOAD_DIR=./uploads
+```
+
+## V2 Quickstart
+
+V2 endpoints are available under `/api/v2`.
+
+Example run:
+
+```bash
+curl -s http://localhost:8000/api/v2/workflows/run \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Hello from v2"}'
+```
+
+List runs:
+
+```bash
+curl -s http://localhost:8000/api/v2/runs
+```
+
+V2 runtime database path:
+
+```bash
+export V2_DB_PATH=./runtime_v2.db
+```
+
+V2 endpoints are documented in `docs/V2_ENDPOINTS.md`.
+Testing strategy: `docs/TESTING_STRATEGY.md`.
+
+## V3 (Experimental)
+
+V3 is a from-scratch, graph-first runtime that uses small specialized models.
+It runs in parallel with V2 and does not share state.
+
+Key capabilities:
+- **Event-Sourced Storage**: Runs and deltas persisted in async SQLite (`runtime_v3.db`)
+- **Small Model Registry**: Role-based model selection with fallbacks (all <=3B)
+- **Typed Tools**: Full type safety with schema validation
+- **HITL Approvals**: Tool calls can require human approval with resume flow
+- **WebSocket Deltas**: Real-time streaming of run updates at `/api/v3/ws/deltas`
+- **Minimal Dependencies**: No Neo4j required for V3 runtime
+
+For a comprehensive guide to V3 concepts and design philosophy, see `docs/OVERVIEW.md`.
+Architecture: `docs/ARCHITECTURE_V3.md`.
+UI status: see “V3 UI Status” in `docs/OVERVIEW.md`.
+
+Example run:
+
+```bash
+curl -s http://localhost:8000/api/v3/workflows/run \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Hello from v3"}'
+```
+
+List runs:
+
+```bash
+curl -s http://localhost:8000/api/v3/runs
+```
+
+V3 runtime database path:
+
+```bash
+export V3_DB_PATH=./runtime_v3.db
+```
+
+V3 endpoints are documented in `docs/V3_ENDPOINTS.md`.
+
+### V3 API Reference
+
+- `POST /api/v3/workflows/run`
+- `GET /api/v3/runs`
+- `GET /api/v3/runs/{run_id}`
+- `GET /api/v3/runs/{run_id}/deltas`
+- `GET /api/v3/tools`
+- `POST /api/v3/tools/call`
+- `GET /api/v3/hitl/requests`
+- `POST /api/v3/hitl/requests/{request_id}/resolve`
+- `WS /api/v3/ws/deltas`
 
 ## Architecture
 
@@ -118,9 +277,9 @@ You (Business Owner)
     └── PM Agent (Granite Dense 8B)
             ├── Coder Agent (Granite Code 8B)
             ├── Architect Agent (Granite Dense 8B)
-            ├── Tester Agent (Granite Code 8B)
-            ├── Reviewer Agent (Granite Code 8B)
-            └── Documentation Agent (Granite Dense 8B)
+            ├── Tester Agent (Granite Code 3B)
+            ├── Reviewer Agent (Granite Dense 8B)
+            └── Documentation Agent (Granite Dense 2B)
 ```
 
 ### Project Structure
@@ -131,23 +290,36 @@ langly/
 │   ├── __init__.py
 │   ├── core/                   # Config, schemas, constants, exceptions
 │   ├── agents/                 # Agent implementations
-│   ├── graphs/                 # LangGraph workflows
+│   ├── graphs/                 # LangGraph workflows (v2)
 │   ├── llm/                    # Ollama client, model configs
 │   ├── memory/                 # Neo4j stores
 │   ├── tools/                  # Tool framework
 │   ├── reliability/            # Circuit breaker, health checks
 │   ├── hitl/                   # Human-in-the-loop
-│   └── api/                    # FastAPI application
+│   ├── runtime/                # V2 runtime storage + config
+│   │   └── tools/              # V2 tool implementations
+│   ├── v3/                     # V3 runtime engine + store
+│   │   └── tools/              # V3 tool implementations
+│   └── api/                    # FastAPI application + routes
+│       ├── app.py              # Application factory
+│       └── routes/             # Versioned API routers (v1/v2/v3)
 ├── static/                     # Frontend assets
 │   ├── index.html              # Main dashboard
 │   ├── tools.html              # Tool management
 │   ├── interventions.html      # HITL page
 │   ├── api-client.js           # JavaScript API client
+│   ├── harness.js/.css         # Chat harness UI
 │   ├── panel-system.js/.css    # Draggable panels
-│   └── tiling-manager.js/.css  # Tiling window manager
-├── tests/                      # Test suite
+│   ├── tiling-manager.js/.css  # Tiling window manager
+│   └── git-tree.js/.css        # Git tree panel
+├── docs/                       # Architecture + endpoint docs
+│   ├── ARCHITECTURE_V2.md
+│   ├── ARCHITECTURE_V3.md
+│   ├── OVERVIEW.md
+│   ├── V2_ENDPOINTS.md
+│   └── V3_ENDPOINTS.md
+├── tests/                      # Test suite (unit, e2e, v2, v3)
 ├── pyproject.toml
-├── ARCHITECTURE.md             # Detailed architecture docs
 └── README.md
 ```
 
@@ -155,61 +327,130 @@ langly/
 
 | Agent | Primary Model | Fallback | Use Case |
 |-------|---------------|----------|----------|
-| Router | Granite MoE 3B | Granite Dense 2B | Fast routing decisions |
-| PM Agent | Granite Dense 8B | Granite Dense 2B | Planning, coordination |
+| Router | Granite MoE 1B | Granite MoE 3B / Granite Dense 2B | Fast routing decisions |
+| PM Agent | Granite Dense 8B | Granite Dense 2B / Granite MoE 3B | Planning, coordination |
 | Coder | Granite Code 8B | Granite Code 3B | Code generation |
-| Architect | Granite Dense 8B | Granite Dense 2B | System design |
-| Tester | Granite Code 8B | Granite Code 3B | Test generation |
-| Reviewer | Granite Code 8B | Granite Code 3B | Code review |
-| Documentation | Granite Dense 8B | Granite Dense 2B | Technical writing |
+| Architect | Granite Dense 8B | Granite Dense 2B / Granite MoE 3B | System design |
+| Tester | Granite Code 3B | Granite Dense 2B / Granite MoE 3B | Test generation |
+| Reviewer | Granite Dense 8B | Granite Dense 2B / Granite MoE 3B | Code review |
+| Documentation | Granite Dense 2B | Granite MoE 3B / Granite MoE 1B | Technical writing |
 | Safety | Granite Guardian 8B | N/A | Content validation |
 | Embeddings | Granite Embedding | N/A | Semantic search |
 
 ## API Endpoints
 
-### Health
-- `GET /health` - System health status
-- `GET /health/ready` - Readiness check
-- `GET /health/live` - Liveness probe
+### Summary
 
-### Tasks
-- `POST /api/v1/tasks` - Create a new task
-- `GET /api/v1/tasks/{task_id}` - Get task details
-- `GET /api/v1/tasks` - List tasks
-- `PUT /api/v1/tasks/{task_id}` - Update task
-- `DELETE /api/v1/tasks/{task_id}` - Cancel task
+- **V1 (legacy)**: `/api/v1/health`, `/api/v1/workflows`, `/api/v1/agents`, `/api/v1/chat`
+- **V2 (primary UI/runtime)**: `/api/v2/harness/run`, `/api/v2/workflows/run`, `/api/v2/runs`, `/api/v2/tools`,
+  `/api/v2/hitl`, `/api/v2/timeline`, `/api/v2/health/v2`, `/api/v2/overview`, `/api/v2/models`, `/api/v2/ws/deltas`
+- **V3 (experimental)**: see “V3 API Reference” above and `docs/V3_ENDPOINTS.md`
 
-### Workflows
-- `POST /api/v1/workflows` - Create workflow
-- `GET /api/v1/workflows/{workflow_id}` - Get workflow
-- `POST /api/v1/workflows/{workflow_id}/pause` - Pause workflow
-- `POST /api/v1/workflows/{workflow_id}/resume` - Resume workflow
+Full endpoint lists:
+- V2: `docs/V2_ENDPOINTS.md`
+- V3: `docs/V3_ENDPOINTS.md`
+- Repo overview: `docs/CHANGELOG.md`
+- I/O examples: `docs/IO_EXAMPLES.md`
 
-### Agents
-- `GET /api/v1/agents` - List agents
-- `GET /api/v1/agents/{agent_id}` - Get agent
-- `GET /api/v1/agents/{agent_id}/state` - Get agent state
-- `GET /api/v1/agents/{agent_id}/metrics` - Get agent metrics
+<details>
+<summary>V2 Endpoints (full)</summary>
 
-### Tools
-- `GET /api/v1/tools` - List tools
-- `POST /api/v1/tools` - Register tool
-- `PUT /api/v1/tools/{tool_id}` - Update tool
-- `DELETE /api/v1/tools/{tool_id}` - Delete tool
-- `POST /api/v1/tools/{tool_id}/execute` - Execute tool
+Workflows
+- `POST /api/v2/workflows/run`
 
-### HITL
-- `GET /api/v1/interventions` - List interventions
-- `POST /api/v1/interventions/{id}/approve` - Approve
-- `POST /api/v1/interventions/{id}/reject` - Reject
+Runs
+- `GET /api/v2/runs`
+- `GET /api/v2/runs/{run_id}`
+- `GET /api/v2/runs/{run_id}/deltas`
 
-### Checkpoints (Time-Travel)
-- `GET /api/v1/checkpoints` - List checkpoints
-- `POST /api/v1/checkpoints` - Create checkpoint
-- `POST /api/v1/checkpoints/{id}/rollback` - Rollback
+Timeline
+- `GET /api/v2/timeline/{run_id}`
+- `GET /api/v2/timeline/recent`
+
+Recent
+- `GET /api/v2/recent/deltas`
+
+Snapshots
+- `GET /api/v2/snapshots/{session_id}`
+- `GET /api/v2/snapshots/{session_id}/latest`
+
+HITL
+- `POST /api/v2/hitl/requests`
+- `GET /api/v2/hitl/requests`
+- `GET /api/v2/hitl/requests/{request_id}`
+- `POST /api/v2/hitl/requests/{request_id}/resolve`
+- `GET /api/v2/hitl/pending-tools`
+
+Events
+- `WS /api/v2/ws/deltas`
+
+Health
+- `GET /api/v2/health/v2`
+- `GET /api/v2/health/ready`
+- `GET /api/v2/health/live`
+
+Agents
+- `GET /api/v2/agents`
+- `GET /api/v2/agents/{role}`
+
+Sessions
+- `GET /api/v2/sessions/{session_id}/runs`
+- `GET /api/v2/sessions/{session_id}/messages`
+- `GET /api/v2/sessions/{session_id}/summary`
+- `POST /api/v2/sessions/{session_id}/clear`
+- `DELETE /api/v2/sessions/runs/{run_id}`
+
+Dashboard
+- `GET /api/v2/dashboard`
+
+Seed
+- `POST /api/v2/seed/run`
+
+Status
+- `GET /api/v2/status`
+
+Config
+- `GET /api/v2/config`
+
+Overview
+- `GET /api/v2/overview`
+
+Metrics
+- `GET /api/v2/metrics`
+
+Reset
+- `POST /api/v2/reset`
+
+Cleanup
+- `POST /api/v2/cleanup/prune`
+
+Diagnostics
+- `GET /api/v2/diagnostics`
+
+Summary
+- `GET /api/v2/summary`
+
+Models
+- `GET /api/v2/models`
+
+Neo4j
+- `GET /api/v2/neo4j`
+
+Tools
+- `GET /api/v2/tools`
+- `GET /api/v2/tools/{tool_name}`
+
+Docs
+- `GET /api/v2/docs`
+
+Harness
+- `POST /api/v2/harness/run`
+</details>
 
 ### WebSocket
-- `WS /ws` - Real-time updates
+- `WS /ws` - Real-time updates (legacy)
+- `WS /api/v2/ws/deltas` - Real-time delta streaming (v2)
+- `WS /api/v3/ws/deltas` - Real-time delta streaming (v3)
 
 ## Frontend Features
 
@@ -254,6 +495,14 @@ pytest --cov=app --cov-report=html
 pytest tests/test_hitl.py -v
 ```
 
+Test suites are organized under `tests/unit`, `tests/e2e`, `tests/v2`, and `tests/v3`.
+
+**NixOS**: If uv's downloaded Python fails, use the system Python:
+
+```bash
+uv sync --extra dev --python /run/current-system/sw/bin/python3
+```
+
 ### Code Quality
 
 ```bash
@@ -261,7 +510,7 @@ pytest tests/test_hitl.py -v
 black app tests
 
 # Lint
-flake8 app tests
+ruff check app tests
 
 # Type check
 mypy app
@@ -323,6 +572,10 @@ volumes:
 | `API_PORT` | 8000 | API server port |
 | `MAX_ITERATIONS` | 50 | Max workflow iterations |
 | `WORKFLOW_TIMEOUT` | 300 | Workflow timeout (seconds) |
+| `V3_DB_PATH` | ./runtime_v3.db | V3 SQLite database path |
+| `ENABLE_NEO4J_MEMORY` | false | Enable Neo4j persistence for v2 summaries |
+| `LANGLY_AUTO_TOOLS` | greptile,lint,jj | Auto tools for harness runs |
+| `LANGLY_GREPTILE_DIR` | ~/Desktop/greptile | Greptile MCP repo path |
 
 ### Circuit Breaker Settings
 

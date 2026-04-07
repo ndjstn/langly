@@ -1,5 +1,8 @@
 # Langly Multi-Agent Platform Architecture
 
+Note: The v2 runtime under `app/runtime` is the primary execution path.
+The v1 LangGraph stack remains for reference but is considered legacy.
+
 ## Overview
 
 This document describes the architecture for a production-grade, parallel multi-agent coding platform using LangChain, LangGraph, Pydantic, FastAPI, and Ollama with IBM Granite models.
@@ -10,17 +13,13 @@ This document describes the architecture for a production-grade, parallel multi-
 langly/
 ├── app/
 │   ├── __init__.py
-│   ├── main.py                    # FastAPI application entry point
+│   ├── main.py                    # ASGI entrypoint
 │   ├── config.py                  # Pydantic Settings configuration
-│   ├── dependencies.py            # FastAPI dependency injection
 │   │
 │   ├── api/
 │   │   ├── __init__.py
-│   │   ├── agents.py              # Agent interaction endpoints
-│   │   ├── workflows.py           # Workflow trigger and status endpoints
-│   │   ├── memory.py              # Memory inspection endpoints
-│   │   ├── tools.py               # Tool management endpoints
-│   │   └── websocket.py           # Real-time WebSocket endpoints
+│   │   ├── app.py                 # FastAPI application factory
+│   │   └── routes/                # Versioned API routers (v1/v2/v3)
 │   │
 │   ├── core/
 │   │   ├── __init__.py
@@ -33,11 +32,9 @@ langly/
 │   │   ├── base.py                # Abstract base agent class
 │   │   ├── pm_agent.py            # Project Manager agent
 │   │   ├── coder_agent.py         # Coder implementation agent
-│   │   ├── architect_agent.py     # System architect agent
-│   │   ├── tester_agent.py        # Testing agent
-│   │   ├── reviewer_agent.py      # Code review agent
-│   │   ├── docs_agent.py          # Documentation agent
-│   │   └── router_agent.py        # Router agent using Granite MoE
+│   │   ├── router_agent.py        # Router agent using Granite MoE
+│   │   ├── specialist_agents.py   # Architect/Tester/Reviewer/Docs agents
+│   │   └── workflow.py            # Agent workflow helpers
 │   │
 │   ├── graphs/
 │   │   ├── __init__.py
@@ -50,63 +47,62 @@ langly/
 │   ├── llm/
 │   │   ├── __init__.py
 │   │   ├── ollama_client.py       # Ollama connection wrapper
-│   │   ├── granite_dense.py       # Granite 3.1 Dense model setup
-│   │   ├── granite_moe.py         # Granite MoE model setup
-│   │   ├── granite_code.py        # Granite Code model setup
-│   │   ├── granite_embedding.py   # Granite Embedding model setup
-│   │   └── granite_guardian.py    # Granite Guardian safety model
+│   │   ├── models.py              # Model registry + configs
+│   │   ├── provider.py            # Provider abstraction
+│   │   ├── embeddings.py          # Embedding helpers
+│   │   └── guardian.py            # Safety validation helpers
 │   │
 │   ├── memory/
 │   │   ├── __init__.py
 │   │   ├── neo4j_client.py        # Neo4j connection management
-│   │   ├── schemas.py             # Neo4j node/relationship schemas
-│   │   ├── task_memory.py         # Task context memory store
-│   │   ├── project_memory.py      # Project knowledge store
-│   │   ├── error_memory.py        # Error logs and patterns
-│   │   ├── conversation_memory.py # Agent conversation history
-│   │   └── retrieval.py           # Semantic search with embeddings
+│   │   └── stores.py              # Memory store helpers
 │   │
 │   ├── tools/
 │   │   ├── __init__.py
-│   │   ├── registry.py            # Tool registration system
+│   │   ├── api.py                 # API-facing tool helpers
+│   │   ├── base.py                # Tool base classes
 │   │   ├── filesystem.py          # File system operation tools
-│   │   ├── code_execution.py      # Code execution sandbox
-│   │   ├── git_tools.py           # Version control tools
-│   │   └── api_tools.py           # External API calling framework
+│   │   ├── registry.py            # Tool registration system
+│   │   └── sandbox.py             # Code execution sandbox
 │   │
 │   ├── reliability/
 │   │   ├── __init__.py
 │   │   ├── circuit_breaker.py     # Circuit breaker pattern
-│   │   ├── timeout.py             # Timeout mechanisms
 │   │   ├── loop_detection.py      # Loop detection and recovery
-│   │   └── health.py              # Health check utilities
+│   │   ├── health_checks.py       # Health check utilities
+│   │   └── graceful_degradation.py # Degradation policies
 │   │
-│   └── hitl/
-│       ├── __init__.py
-│       ├── intervention.py        # Human intervention points
-│       ├── approval.py            # Approval request system
-│       └── time_travel.py         # Time-travel debugging
+│   ├── hitl/
+│   │   ├── __init__.py
+│   │   ├── intervention.py        # Human intervention points
+│   │   ├── approval.py            # Approval request system
+│   │   └── time_travel.py         # Time-travel debugging
+│   ├── runtime/                   # V2 runtime storage + config
+│   │   └── tools/                 # V2 tool implementations
+│   └── v3/                        # V3 runtime engine + store
+│       └── tools/                 # V3 tool implementations
 │
-├── static/                        # Existing frontend assets
-│   ├── panel-system.css
-│   ├── panel-system.js
-│   ├── git-tree.css
-│   ├── git-tree.js
-│   ├── tiling-manager.css
-│   └── tiling-manager.js
+├── static/                        # Frontend assets
+│   ├── index.html
+│   ├── tools.html
+│   ├── interventions.html
+│   ├── api-client.js
+│   ├── harness.js/.css
+│   ├── panel-system.js/.css
+│   ├── tiling-manager.js/.css
+│   └── git-tree.js/.css
 │
-├── templates/
-│   └── index.html                 # Main application template
+├── docs/
+│   ├── ARCHITECTURE_V2.md
+│   ├── ARCHITECTURE_V3.md
+│   ├── OVERVIEW.md
+│   ├── V2_ENDPOINTS.md
+│   └── V3_ENDPOINTS.md
 │
-├── tests/
-│   ├── __init__.py
-│   ├── test_agents/
-│   ├── test_graphs/
-│   ├── test_memory/
-│   └── test_api/
+├── tests/                         # unit, e2e, v2, v3
+├── scripts/
 │
 ├── pyproject.toml
-├── docker-compose.yml             # Neo4j + App orchestration
 ├── .env.example
 └── README.md
 ```
@@ -115,121 +111,100 @@ langly/
 
 ```mermaid
 graph TB
-    subgraph User Interface
-        UI[Web UI - Existing Frontend]
-        WS[WebSocket Connection]
+    subgraph User_Interfaces
+        UI[Web UI (V2)]
+        API_CLIENTS[API Clients (V3)]
+        WS_V2[WS /api/v2/ws/deltas]
+        WS_V3[WS /api/v3/ws/deltas]
     end
 
-    subgraph FastAPI Layer
-        API[FastAPI Application]
-        HITL[Human-in-Loop Controller]
-        STATUS[Status Monitor]
+    subgraph FastAPI
+        APP[FastAPI App]
+        V1[V1 Legacy Routers]
+        V2[V2 Routers]
+        V3[V3 Routers]
     end
 
-    subgraph LangGraph Orchestration
-        ROUTER[Router Agent - Granite MoE]
-        
-        subgraph Parallel Execution Pool
-            PM[PM Agent]
-            CODER[Coder Agent]
-            ARCH[Architect Agent]
-            TEST[Tester Agent]
-            REV[Reviewer Agent]
-            DOCS[Documentation Agent]
-        end
-        
-        SUPERVISOR[Supervisor Node]
-        CHECKPOINT[Checkpointer]
+    subgraph Runtime_V2["V2 Runtime (LangGraph)"]
+        V2ENGINE[Workflow Engine]
+        V2GRAPH[LangGraph StateGraph]
+        V2HITL[HITL Controller]
+        V2TOOLS[Tool Registry]
+        V2STORE[(SQLite runtime_v2.db)]
+        NEO4J[(Neo4j Memory)]
     end
 
-    subgraph LLM Layer
+    subgraph Runtime_V3["V3 Runtime (Graph-First)"]
+        V3ENGINE[V3 Engine]
+        V3TOOLS[Tool Registry]
+        V3HITL[V3 HITL]
+        V3STORE[(SQLite runtime_v3.db)]
+        EVENTS[Event Bus / Deltas]
+    end
+
+    subgraph LLM_Layer
         OLLAMA[Ollama Server]
-        DENSE[Granite 3.1 Dense 8B]
-        MOE[Granite MoE 3B]
+        DENSE[Granite Dense]
+        MOE[Granite MoE]
         CODE[Granite Code]
         GUARDIAN[Granite Guardian]
         EMBED[Granite Embedding]
     end
 
-    subgraph Memory Layer
-        NEO4J[(Neo4j Graph DB)]
-        TASK_MEM[Task Context]
-        PROJ_MEM[Project Knowledge]
-        ERR_MEM[Error Patterns]
-        CONV_MEM[Conversation History]
-    end
-
-    subgraph Tool Layer
-        FS[File System Tools]
-        EXEC[Code Execution]
-        GIT[Git Integration]
-        EXT_API[External APIs]
-    end
-
     subgraph Reliability
         CB[Circuit Breaker]
-        TIMEOUT[Timeout Handler]
         LOOP[Loop Detection]
         HEALTH[Health Checks]
+        DEGRADE[Graceful Degradation]
     end
 
-    UI --> API
-    WS --> STATUS
-    API --> ROUTER
-    API --> HITL
-    
-    ROUTER --> PM
-    ROUTER --> CODER
-    ROUTER --> ARCH
-    ROUTER --> TEST
-    ROUTER --> REV
-    ROUTER --> DOCS
-    
-    PM --> SUPERVISOR
-    CODER --> SUPERVISOR
-    ARCH --> SUPERVISOR
-    TEST --> SUPERVISOR
-    REV --> SUPERVISOR
-    DOCS --> SUPERVISOR
-    
-    SUPERVISOR --> CHECKPOINT
-    
-    PM --> DENSE
-    CODER --> CODE
-    ARCH --> DENSE
-    TEST --> CODE
-    REV --> CODE
-    DOCS --> DENSE
-    ROUTER --> MOE
-    
+    UI --> APP
+    API_CLIENTS --> APP
+    APP --> V1
+    APP --> V2
+    APP --> V3
+
+    V2 --> V2ENGINE
+    V2 --> V2HITL
+    V2 --> V2TOOLS
+
+    V3 --> V3ENGINE
+    V3 --> V3HITL
+    V3 --> V3TOOLS
+
+    V2ENGINE --> V2GRAPH
+    V2GRAPH --> V2STORE
+    V2ENGINE --> NEO4J
+    V2HITL --> V2STORE
+
+    V3ENGINE --> V3STORE
+    V3ENGINE --> EVENTS
+    EVENTS --> WS_V3
+    V2STORE --> WS_V2
+    WS_V2 --> UI
+    WS_V3 --> API_CLIENTS
+
+    V2ENGINE --> DENSE
+    V2ENGINE --> CODE
+    V2ENGINE --> MOE
+    V3ENGINE --> DENSE
+    V3ENGINE --> CODE
+    V3ENGINE --> MOE
+
     DENSE --> OLLAMA
     MOE --> OLLAMA
     CODE --> OLLAMA
     GUARDIAN --> OLLAMA
     EMBED --> OLLAMA
-    
-    PM --> NEO4J
-    CODER --> NEO4J
-    
-    NEO4J --> TASK_MEM
-    NEO4J --> PROJ_MEM
-    NEO4J --> ERR_MEM
-    NEO4J --> CONV_MEM
-    
-    EMBED --> NEO4J
-    
-    CODER --> FS
-    CODER --> EXEC
-    CODER --> GIT
-    PM --> EXT_API
-    
+
     OLLAMA --> CB
-    NEO4J --> HEALTH
-    API --> TIMEOUT
-    SUPERVISOR --> LOOP
+    APP --> HEALTH
+    V2ENGINE --> LOOP
+    V3ENGINE --> LOOP
+    APP --> DEGRADE
 ```
 
-## LangGraph Workflow Architecture
+## V2 LangGraph Workflow Architecture
 
 ```mermaid
 stateDiagram-v2
@@ -350,15 +325,27 @@ graph LR
 
 | Agent Type | Primary Model | Fallback Model | Use Case |
 |------------|--------------|----------------|----------|
-| Router | Granite MoE 1B/3B | Granite Dense 2B | Fast routing decisions, low latency |
-| PM Agent | Granite Dense 8B | Granite Dense 2B | Complex planning, coordination |
-| Coder | Granite Code 8B | Granite Code 3B | Code generation, refactoring |
-| Architect | Granite Dense 8B | Granite Dense 2B | System design, architecture |
-| Tester | Granite Code 8B | Granite Code 3B | Test generation, analysis |
-| Reviewer | Granite Code 8B | Granite Code 3B | Code review, suggestions |
-| Documentation | Granite Dense 8B | Granite Dense 2B | Technical writing |
-| Safety | Granite Guardian | N/A | Content safety validation |
+| Router | Granite MoE 1B | Granite MoE 3B / Granite Dense 2B | Fast routing decisions, low latency |
+| PM Agent | Granite Dense 8B | Granite Dense 2B / Granite MoE 3B | Complex planning, coordination |
+| Coder | Granite Code 8B | Granite Code 3B / Granite Dense 8B | Code generation, refactoring |
+| Architect | Granite Dense 8B | Granite Dense 2B / Granite MoE 3B | System design, architecture |
+| Tester | Granite Code 3B | Granite Dense 2B / Granite MoE 3B | Test generation, analysis |
+| Reviewer | Granite Dense 8B | Granite Dense 2B / Granite MoE 3B | Code review, suggestions |
+| Documentation | Granite Dense 2B | Granite MoE 3B / Granite MoE 1B | Technical writing |
+| Safety | Granite Guardian | Granite Dense 8B / Granite Dense 2B | Content safety validation |
 | Memory | Granite Embedding | N/A | Semantic search, retrieval |
+
+## V3 Runtime Flow
+
+```mermaid
+flowchart LR
+    INPUT[User/API Request] --> V3ENGINE[V3 Engine]
+    V3ENGINE --> V3TOOLS[Typed Tools]
+    V3ENGINE --> V3HITL[HITL Approvals]
+    V3ENGINE --> V3STORE[(SQLite runtime_v3.db)]
+    V3ENGINE --> EVENTS[Event Bus / Deltas]
+    EVENTS --> WS[WS /api/v3/ws/deltas]
+```
 
 ## Parallel Execution Design
 

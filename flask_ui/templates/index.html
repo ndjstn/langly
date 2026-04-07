@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Langly Flask Harness</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;700&family=Space+Grotesk:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="{{ url_for('static', filename='flask.css') }}" />
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  </head>
+  <body class="theme-{{ default_theme }} mode-full">
+    <header>
+      <div>
+        <h1>Langly Flask Harness</h1>
+        <p>Streaming UI for /api/v2/harness/run</p>
+      </div>
+      <div class="header-actions">
+        <label class="theme-select">
+          Theme
+          <select id="theme-select">
+            {% for theme in themes %}
+              <option value="{{ theme.value }}" {% if theme.value == default_theme %}selected{% endif %}>
+                {{ theme.label }}
+              </option>
+            {% endfor %}
+          </select>
+        </label>
+        <button id="full-view" class="toggle-btn active">Full</button>
+        <button id="operator-view" class="toggle-btn">Operator</button>
+      </div>
+    </header>
+    <main>
+      <section class="chat-column">
+        <div class="panel chat-panel resizable">
+          <div class="panel-header">
+            <h2>Chat</h2>
+            <span class="panel-hint">Streaming tokens + formatted output</span>
+          </div>
+          <div class="panel-body">
+            <div class="chat-window" id="chat-window"></div>
+            <div class="attachments">
+              <div id="attachments-list"></div>
+              <label class="upload-btn">
+                Attach image
+                <input id="file-input" type="file" accept="image/*" />
+              </label>
+            </div>
+            <textarea id="message" placeholder="Ask anything"></textarea>
+            <div class="controls">
+              <label><input id="research" type="checkbox" checked /> research</label>
+              <label><input id="citations" type="checkbox" checked /> citations</label>
+              <label><input id="prompt_enhance" type="checkbox" checked /> prompt enhance</label>
+              <label><input id="tuning" type="checkbox" checked /> tuning</label>
+              <label><input id="tool_selection" type="checkbox" checked /> tool selection</label>
+              <label><input id="task_capture" type="checkbox" checked /> task capture</label>
+              <label><input id="task_templates" type="checkbox" checked /> task templates</label>
+            </div>
+            <div class="controls">
+              <button id="send">Run</button>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="panel-stack">
+        <details class="panel resizable" open>
+          <summary>Status</summary>
+          <div id="status"></div>
+        </details>
+        <details class="panel resizable" open>
+          <summary>Katas</summary>
+          <div id="katas"></div>
+        </details>
+        <details class="panel resizable" open>
+          <summary>Tools</summary>
+          <div id="tools"></div>
+        </details>
+        <details class="panel resizable">
+          <summary>Research</summary>
+          <div id="research-panel"></div>
+        </details>
+        <details class="panel resizable">
+          <summary>Mermaid</summary>
+          <div id="mermaid-panel"></div>
+        </details>
+        <details class="panel resizable" open>
+          <summary>Files</summary>
+          <div class="file-browser">
+            <div class="file-path" id="files-path"></div>
+            <div class="file-list" id="files-list"></div>
+            <pre class="file-viewer" id="file-viewer"></pre>
+          </div>
+        </details>
+        <details class="panel resizable">
+          <summary>Meta</summary>
+          <div id="meta" class="output"></div>
+        </details>
+      </section>
+    </main>
+
+    <script>
+      window.HARNESS_WS = "{{ harness_ws }}";
+      if (window.mermaid) {
+        window.mermaid.initialize({ startOnLoad: false });
+      }
+    </script>
+    <script src="{{ url_for('static', filename='flask.js') }}"></script>
+  </body>
+</html>

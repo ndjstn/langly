@@ -6,7 +6,7 @@
 class LanglyAPI {
     constructor(baseUrl = '') {
         this.baseUrl = baseUrl || window.location.origin;
-        this.apiVersion = 'v1';
+        this.apiVersion = 'v2';
         this.wsConnections = new Map();
     }
 
@@ -46,74 +46,60 @@ class LanglyAPI {
 
     // Health endpoints
     async getHealth() {
-        return await fetch(`${this.baseUrl}/health`).then(r => r.json());
+        return await fetch(`${this.baseUrl}/api/v2/health/v2`).then(r => r.json());
     }
 
     async getReadiness() {
-        return await fetch(`${this.baseUrl}/ready`).then(r => r.json());
+        return await fetch(`${this.baseUrl}/api/v2/health/ready`).then(r => r.json());
     }
 
     async getLiveness() {
-        return await fetch(`${this.baseUrl}/live`).then(r => r.json());
+        return await fetch(`${this.baseUrl}/api/v2/health/live`).then(r => r.json());
     }
 
     // Task endpoints
     async createTask(taskData) {
-        return await this.request('/tasks', {
-            method: 'POST',
-            body: JSON.stringify(taskData),
-        });
+        throw new APIError('Tasks API is not supported in v2', 400);
     }
 
     async getTask(taskId) {
-        return await this.request(`/tasks/${taskId}`);
+        throw new APIError('Tasks API is not supported in v2', 400);
     }
 
     async listTasks(params = {}) {
-        const query = new URLSearchParams(params).toString();
-        return await this.request(`/tasks${query ? '?' + query : ''}`);
+        throw new APIError('Tasks API is not supported in v2', 400);
     }
 
     async updateTask(taskId, updates) {
-        return await this.request(`/tasks/${taskId}`, {
-            method: 'PATCH',
-            body: JSON.stringify(updates),
-        });
+        throw new APIError('Tasks API is not supported in v2', 400);
     }
 
     async cancelTask(taskId) {
-        return await this.request(`/tasks/${taskId}/cancel`, {
-            method: 'POST',
-        });
+        throw new APIError('Tasks API is not supported in v2', 400);
     }
 
     // Workflow endpoints
     async createWorkflow(workflowData) {
-        return await this.request('/workflows', {
+        return await this.request('/workflows/run', {
             method: 'POST',
             body: JSON.stringify(workflowData),
         });
     }
 
     async getWorkflow(workflowId) {
-        return await this.request(`/workflows/${workflowId}`);
+        throw new APIError('Workflow detail is not supported in v2', 400);
     }
 
     async listWorkflows(params = {}) {
-        const query = new URLSearchParams(params).toString();
-        return await this.request(`/workflows${query ? '?' + query : ''}`);
+        throw new APIError('Workflow listing is not supported in v2', 400);
     }
 
     async pauseWorkflow(workflowId) {
-        return await this.request(`/workflows/${workflowId}/pause`, {
-            method: 'POST',
-        });
+        throw new APIError('Workflow pause is not supported in v2', 400);
     }
 
     async resumeWorkflow(workflowId) {
-        return await this.request(`/workflows/${workflowId}/resume`, {
-            method: 'POST',
-        });
+        throw new APIError('Workflow resume is not supported in v2', 400);
     }
 
     // Agent endpoints
@@ -126,11 +112,11 @@ class LanglyAPI {
     }
 
     async getAgentState(agentId) {
-        return await this.request(`/agents/${agentId}/state`);
+        throw new APIError('Agent state is not supported in v2', 400);
     }
 
     async getAgentMetrics(agentId) {
-        return await this.request(`/agents/${agentId}/metrics`);
+        throw new APIError('Agent metrics are not supported in v2', 400);
     }
 
     // Tool endpoints
@@ -143,141 +129,113 @@ class LanglyAPI {
     }
 
     async registerTool(toolData) {
-        return await this.request('/tools', {
-            method: 'POST',
-            body: JSON.stringify(toolData),
-        });
+        throw new APIError('Tool registration is not supported in v2', 400);
     }
 
     async updateTool(toolName, updates) {
-        return await this.request(`/tools/${toolName}`, {
-            method: 'PATCH',
-            body: JSON.stringify(updates),
-        });
+        throw new APIError('Tool updates are not supported in v2', 400);
     }
 
     async deleteTool(toolName) {
-        return await this.request(`/tools/${toolName}`, {
-            method: 'DELETE',
-        });
+        throw new APIError('Tool deletion is not supported in v2', 400);
     }
 
     async executeTool(toolName, params) {
-        return await this.request(`/tools/${toolName}/execute`, {
-            method: 'POST',
-            body: JSON.stringify(params),
-        });
+        throw new APIError('Tool execution is not supported in v2 via API', 400);
     }
 
     // HITL Intervention endpoints
     async listInterventions(status = 'pending') {
-        return await this.request(`/interventions?status=${status}`);
+        const resolved = status === 'resolved' ? 'true' : 'false';
+        return await this.request(`/hitl/requests?resolved=${resolved}`);
     }
 
     async getIntervention(interventionId) {
-        return await this.request(`/interventions/${interventionId}`);
+        return await this.request(`/hitl/requests/${interventionId}`);
     }
 
     async approveIntervention(interventionId, feedback = '') {
-        return await this.request(`/interventions/${interventionId}/approve`, {
+        return await this.request(`/hitl/requests/${interventionId}/resolve`, {
             method: 'POST',
-            body: JSON.stringify({ feedback, approved: true }),
+            body: JSON.stringify({ notes: feedback, approved: true }),
         });
     }
 
     async rejectIntervention(interventionId, feedback) {
-        return await this.request(`/interventions/${interventionId}/reject`, {
+        return await this.request(`/hitl/requests/${interventionId}/resolve`, {
             method: 'POST',
-            body: JSON.stringify({ feedback, approved: false }),
+            body: JSON.stringify({ notes: feedback, approved: false }),
         });
     }
 
     async requestMoreInfo(interventionId, questions) {
-        return await this.request(`/interventions/${interventionId}/clarify`, {
-            method: 'POST',
-            body: JSON.stringify({ questions }),
-        });
+        throw new APIError('Clarification flow is not supported in v2', 400);
     }
 
     // Approval endpoints
     async listApprovals(status = 'pending') {
-        return await this.request(`/approvals?status=${status}`);
+        throw new APIError('Approvals endpoint is not supported in v2', 400);
     }
 
     async processApproval(approvalId, approved, feedback = '') {
-        return await this.request(`/approvals/${approvalId}`, {
-            method: 'POST',
-            body: JSON.stringify({ approved, feedback }),
-        });
+        throw new APIError('Approvals endpoint is not supported in v2', 400);
     }
 
     // Checkpoint endpoints
     async listCheckpoints(workflowId) {
-        return await this.request(`/checkpoints?workflow_id=${workflowId}`);
+        throw new APIError('Checkpoints are not supported in v2', 400);
     }
 
     async getCheckpoint(checkpointId) {
-        return await this.request(`/checkpoints/${checkpointId}`);
+        throw new APIError('Checkpoints are not supported in v2', 400);
     }
 
     async createCheckpoint(workflowId, label = '') {
-        return await this.request('/checkpoints', {
-            method: 'POST',
-            body: JSON.stringify({ workflow_id: workflowId, label }),
-        });
+        throw new APIError('Checkpoints are not supported in v2', 400);
     }
 
     async rollbackToCheckpoint(checkpointId) {
-        return await this.request(`/checkpoints/${checkpointId}/rollback`, {
-            method: 'POST',
-        });
+        throw new APIError('Checkpoints are not supported in v2', 400);
     }
 
     async compareCheckpoints(checkpointId1, checkpointId2) {
-        return await this.request(
-            `/checkpoints/compare?from=${checkpointId1}&to=${checkpointId2}`
-        );
+        throw new APIError('Checkpoints are not supported in v2', 400);
     }
 
     // Chat endpoint
     async sendMessage(message, workflowId = null) {
-        return await this.request('/chat', {
+        return await this.request('/workflows/run', {
             method: 'POST',
-            body: JSON.stringify({ message, workflow_id: workflowId }),
+            body: JSON.stringify({ message, session_id: workflowId }),
         });
     }
 
     // Memory endpoints
     async queryMemory(query, memoryType = 'project') {
-        return await this.request('/memory/query', {
-            method: 'POST',
-            body: JSON.stringify({ query, memory_type: memoryType }),
-        });
+        throw new APIError('Memory API is not supported in v2', 400);
     }
 
     async getConversationHistory(sessionId, limit = 50) {
-        return await this.request(
-            `/memory/conversation/${sessionId}?limit=${limit}`
-        );
+        throw new APIError('Memory API is not supported in v2', 400);
     }
 
     // Reliability endpoints
     async getSystemHealth() {
-        return await this.request('/system/health');
+        throw new APIError('System health API is not supported in v2', 400);
     }
 
     async getCircuitBreakerStatus() {
-        return await this.request('/system/circuit-breakers');
+        throw new APIError('Circuit breaker API is not supported in v2', 400);
     }
 
     async getDegradationStatus() {
-        return await this.request('/system/degradation');
+        throw new APIError('Degradation API is not supported in v2', 400);
     }
 
     // WebSocket connections
-    connectWebSocket(channel = 'default', handlers = {}) {
+    connectWebSocket(channel = 'deltas', handlers = {}) {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws/${channel}`;
+        const wsUrl = `${protocol}//${window.location.host}/api/${this.apiVersion}/ws/${channel}`;
         
         const ws = new WebSocket(wsUrl);
         

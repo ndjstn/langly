@@ -503,7 +503,7 @@ async def check_ollama_health() -> dict[str, Any]:
             "models": [m.get("name") for m in models],
             "base_url": client._base_url,
         }
-    except LLMError as e:
+    except (LLMError, Exception) as e:
         return {
             "healthy": False,
             "error": str(e),

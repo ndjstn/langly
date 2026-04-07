@@ -23,6 +23,7 @@ from app.memory.stores import (
     get_knowledge_store,
     get_task_store,
 )
+from app.memory.zettelkasten import ZettelkastenStore, ZkNote
 
 
 __all__ = [
@@ -44,4 +45,6 @@ __all__ = [
     "get_error_store",
     "get_conversation_store",
     "get_task_store",
+    "ZettelkastenStore",
+    "ZkNote",
 ]

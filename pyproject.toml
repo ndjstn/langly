@@ -20,6 +20,7 @@ dependencies = [
     "pydantic-settings>=2.6.0",
     # Database
     "neo4j>=5.26.0",
+    "aiosqlite>=0.20.0",
     # HTTP client
     "httpx>=0.28.0",
     # Reliability

@@ -30,6 +30,36 @@ class StuckCondition(str, Enum):
     AGENT_WAITING = "agent_waiting"
 
 
+class LoopType(str, Enum):
+    """Legacy loop type classification."""
+
+    INFINITE_LOOP = "infinite_loop"
+    STATE_REPEAT = "state_repeat"
+    TIMEOUT = "timeout"
+    NO_PROGRESS = "no_progress"
+
+
+class LoopSeverity(str, Enum):
+    """Legacy loop severity classification."""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+@dataclass
+class LoopEvent:
+    """Legacy loop event model for compatibility."""
+
+    workflow_id: str
+    loop_type: LoopType
+    severity: LoopSeverity
+    description: str
+    event_id: str = field(default_factory=lambda: str(datetime.utcnow().timestamp()))
+    created_at: datetime = field(default_factory=datetime.utcnow)
+
+
 @dataclass
 class LoopDetectionConfig:
     """Configuration for loop detection.
@@ -51,6 +81,11 @@ class LoopDetectionConfig:
     min_progress_threshold: float = 0.01
     timeout_seconds: float = 600.0
     failed_tool_call_threshold: int = 5
+    state_repeat_threshold: int = 3
+
+    def __post_init__(self) -> None:
+        if self.max_state_repetitions == 3 and self.state_repeat_threshold != 3:
+            self.max_state_repetitions = self.state_repeat_threshold
 
 
 @dataclass
@@ -180,7 +215,9 @@ class LoopDetector:
     def record_iteration(
         self,
         workflow_id: str,
-        state: dict[str, Any],
+        state: dict[str, Any] | None = None,
+        agent_id: str | None = None,
+        state_hash: str | None = None,
     ) -> list[StuckCondition]:
         """Record a workflow iteration and check for stuck conditions.
 
@@ -206,24 +243,28 @@ class LoopDetector:
         # Check iteration limit
         if metrics.iteration_count >= self.config.max_iterations:
             detected.append(StuckCondition.INFINITE_LOOP)
-            raise LoopDetectedError(
-                f"Maximum iterations ({self.config.max_iterations}) exceeded",
-                workflow_id=workflow_id,
-                iteration_count=metrics.iteration_count,
-            )
+            if state_hash is None:
+                raise LoopDetectedError(
+                    f"Maximum iterations ({self.config.max_iterations}) exceeded",
+                    workflow_id=workflow_id,
+                    iteration_count=metrics.iteration_count,
+                )
 
         # Check timeout
         elapsed = (datetime.utcnow() - metrics.start_time).total_seconds()
         if elapsed >= self.config.timeout_seconds:
             detected.append(StuckCondition.TIMEOUT)
-            raise WorkflowTimeoutError(
-                f"Workflow timed out after {elapsed:.1f}s",
-                workflow_id=workflow_id,
-                timeout_seconds=int(self.config.timeout_seconds),
-            )
+            if state_hash is None:
+                raise WorkflowTimeoutError(
+                    f"Workflow timed out after {elapsed:.1f}s",
+                    workflow_id=workflow_id,
+                    timeout_seconds=int(self.config.timeout_seconds),
+                )
 
         # Check state repetition
-        state_hash = StateHasher.hash_state(state)
+        if state is None:
+            state = {"current_agent": agent_id}
+        state_hash = state_hash or StateHasher.hash_state(state)
         history = self._state_history[workflow_id]
 
         if state_hash in metrics.state_repetition_counts:
@@ -246,6 +287,51 @@ class LoopDetector:
 
         metrics.detected_conditions.extend(detected)
         return detected
+
+    def check_for_loops(self, workflow_id: str) -> LoopEvent | None:
+        """Return a LoopEvent if a loop condition is detected."""
+        metrics = self._workflows.get(workflow_id)
+        if metrics is None:
+            return None
+
+        if metrics.iteration_count > self.config.max_iterations:
+            return LoopEvent(
+                workflow_id=workflow_id,
+                loop_type=LoopType.INFINITE_LOOP,
+                severity=LoopSeverity.HIGH,
+                description="Maximum iterations exceeded",
+            )
+
+        if metrics.state_repetition_counts:
+            max_repeat = max(metrics.state_repetition_counts.values())
+            if max_repeat >= self.config.max_state_repetitions:
+                return LoopEvent(
+                    workflow_id=workflow_id,
+                    loop_type=LoopType.STATE_REPEAT,
+                    severity=LoopSeverity.MEDIUM,
+                    description="Repeated state detected",
+                )
+
+        elapsed = (datetime.utcnow() - metrics.start_time).total_seconds()
+        if elapsed >= self.config.timeout_seconds:
+            return LoopEvent(
+                workflow_id=workflow_id,
+                loop_type=LoopType.TIMEOUT,
+                severity=LoopSeverity.HIGH,
+                description="Workflow timed out",
+            )
+
+        return None
+
+    def get_iteration_count(self, workflow_id: str) -> int:
+        metrics = self._workflows.get(workflow_id)
+        return metrics.iteration_count if metrics else 0
+
+    def clear_workflow(self, workflow_id: str) -> None:
+        """Clear tracking for a workflow (compat)."""
+        self._workflows.pop(workflow_id, None)
+        self._state_history.pop(workflow_id, None)
+        self._progress_tracker.pop(workflow_id, None)
 
     def record_tool_call_result(
         self,

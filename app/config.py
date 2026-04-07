@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     )
 
     # Application settings
-    app_name: str = Field(default="Langly", description="Application name")
+    app_name: str = Field(default="langly", description="Application name")
     app_host: str = Field(default="0.0.0.0", description="Server host")
     app_port: int = Field(default=8000, description="Server port")
     debug: bool = Field(default=True, description="Debug mode")
@@ -56,6 +56,18 @@ class Settings(BaseSettings):
     ollama_timeout: int = Field(
         default=120,
         description="Ollama request timeout in seconds"
+    )
+    ollama_prefetch_models: bool = Field(
+        default=True,
+        description="Pull missing Ollama models on startup"
+    )
+    ollama_preload_models: bool = Field(
+        default=True,
+        description="Warm Ollama models in memory on startup"
+    )
+    ollama_keep_alive: int = Field(
+        default=300,
+        description="Seconds to keep warmed Ollama models in memory"
     )
 
     # Neo4j settings
@@ -84,6 +96,12 @@ class Settings(BaseSettings):
     default_timeout: int = Field(
         default=300,
         description="Default operation timeout in seconds"
+    )
+
+    # V2 runtime settings
+    enable_neo4j_memory: bool = Field(
+        default=False,
+        description="Enable Neo4j persistence for v2 summaries"
     )
 
     # CORS settings

@@ -26,6 +26,9 @@ class DegradationLevel(str, Enum):
     PARTIAL = "partial"  # Some features disabled
     MINIMAL = "minimal"  # Only essential features
     OFFLINE = "offline"  # No service available
+    NORMAL = "normal"
+    REDUCED = "reduced"
+    EMERGENCY = "emergency"
 
 
 class FeatureFlag(str, Enum):
@@ -559,6 +562,92 @@ class RateLimiter:
             Number of available tokens.
         """
         return self._tokens
+
+
+# =============================================================================
+# Legacy Compatibility Layer (tests/compat)
+# =============================================================================
+
+
+@dataclass
+class DegradationConfig:
+    """Legacy degradation config for tests."""
+
+    enable_auto_degradation: bool = True
+    reduced_timeout_multiplier: float = 0.75
+
+
+@dataclass
+class DegradationTrigger:
+    """Legacy degradation trigger."""
+
+    trigger_type: str
+    threshold: float
+    action_level: DegradationLevel
+
+
+class DegradationManager:
+    """Legacy degradation manager for tests."""
+
+    def __init__(self, config: DegradationConfig | None = None) -> None:
+        self.config = config or DegradationConfig()
+        self.current_level = DegradationLevel.NORMAL
+        self._triggers: list[DegradationTrigger] = []
+        self._metrics: dict[str, float] = {}
+
+    def set_level(self, level: DegradationLevel) -> None:
+        self.current_level = level
+
+    def escalate(self) -> None:
+        order = [
+            DegradationLevel.NORMAL,
+            DegradationLevel.REDUCED,
+            DegradationLevel.MINIMAL,
+            DegradationLevel.EMERGENCY,
+        ]
+        idx = min(order.index(self.current_level) + 1, len(order) - 1)
+        self.current_level = order[idx]
+
+    def deescalate(self) -> None:
+        order = [
+            DegradationLevel.NORMAL,
+            DegradationLevel.REDUCED,
+            DegradationLevel.MINIMAL,
+            DegradationLevel.EMERGENCY,
+        ]
+        idx = max(order.index(self.current_level) - 1, 0)
+        self.current_level = order[idx]
+
+    def get_adjusted_timeout(self, base_timeout: float) -> float:
+        if self.current_level == DegradationLevel.REDUCED:
+            return base_timeout * self.config.reduced_timeout_multiplier
+        if self.current_level == DegradationLevel.MINIMAL:
+            return base_timeout * 0.5
+        if self.current_level == DegradationLevel.EMERGENCY:
+            return base_timeout * 0.25
+        return base_timeout
+
+    def is_feature_available(self, feature: str) -> bool:
+        if self.current_level == DegradationLevel.EMERGENCY:
+            return feature != "parallel_tasks"
+        return True
+
+    def add_trigger(self, trigger: DegradationTrigger) -> None:
+        self._triggers.append(trigger)
+
+    def record_metric(self, metric: str, value: float) -> None:
+        self._metrics[metric] = value
+
+    def evaluate_triggers(self) -> None:
+        if not self.config.enable_auto_degradation:
+            return
+        for trigger in self._triggers:
+            value = self._metrics.get(trigger.trigger_type)
+            if value is not None and value >= trigger.threshold:
+                self.set_level(trigger.action_level)
+
+    def reset(self) -> None:
+        self.current_level = DegradationLevel.NORMAL
 
 
 # Global instance management

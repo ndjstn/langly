@@ -1,10 +1,64 @@
-e """
+"""
 Constants and configuration values for the Langly platform.
 
 This module defines all constant values used throughout the application,
 including default configurations, model mappings, and agent prompts.
 """
+from enum import Enum
 from typing import Any
+
+from app.core.schemas import TaskPriority
+
+
+class AgentType(str, Enum):
+    """Legacy agent type enum for compatibility."""
+
+    PROJECT_MANAGER = "project_manager"
+    PM = "pm"
+    CODER = "coder"
+    ARCHITECT = "architect"
+    TESTER = "tester"
+    REVIEWER = "reviewer"
+    DOCUMENTATION = "documentation"
+    DOCS = "docs"
+    ROUTER = "router"
+    GUARDIAN = "guardian"
+
+
+class TaskType(str, Enum):
+    """Legacy task type enum for compatibility."""
+
+    CODE = "code"
+    ARCHITECTURE = "architecture"
+    TEST = "test"
+    REVIEW = "review"
+    DOCUMENT = "document"
+    DOCUMENTATION = "documentation"
+    GENERAL = "general"
+    PLANNING = "planning"
+
+
+class TaskStatus(str, Enum):
+    """Legacy task status enum for compatibility."""
+
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+    NEEDS_REVIEW = "needs_review"
+    BLOCKED = "blocked"
+
+
+class WorkflowStatus(str, Enum):
+    """Legacy workflow status enum for compatibility."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    PAUSED = "paused"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
 
 # =============================================================================
 # Workflow Defaults
@@ -69,6 +123,12 @@ MODEL_FALLBACKS: dict[str, list[str]] = {
     "embedding": [],  # No fallback for embeddings
 }
 """Fallback chain for each model when primary is unavailable."""
+
+# Legacy model config mapping (tests/compat)
+MODEL_CONFIGS: dict[str, dict[str, Any]] = {
+    key: {"model": value} for key, value in GRANITE_MODELS.items()
+}
+"""Legacy model configuration mapping for backwards compatibility."""
 
 # =============================================================================
 # Agent System Prompts

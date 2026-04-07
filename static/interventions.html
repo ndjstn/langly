@@ -862,27 +862,32 @@ def login_required_deprecated(f):
             });
         });
 
-        // Intervention item selection
-        document.querySelectorAll('.intervention-item').forEach(item => {
-            item.addEventListener('click', () => {
-                document.querySelectorAll('.intervention-item').forEach(i => i.classList.remove('active'));
-                item.classList.add('active');
-                
-                // Load intervention details (would fetch from API)
-                const id = item.dataset.id;
-                console.log('Load intervention:', id);
+        let selectedRequestId = null;
+
+        function bindInterventionSelection() {
+            document.querySelectorAll('.intervention-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    document.querySelectorAll('.intervention-item').forEach(i => i.classList.remove('active'));
+                    item.classList.add('active');
+                    selectedRequestId = item.dataset.id;
+                });
             });
-        });
+        }
 
         // Action buttons
         document.querySelector('.btn-success').addEventListener('click', async () => {
             const feedback = document.querySelector('.feedback-input').value;
             
+            if (!selectedRequestId) {
+                alert('Select a request to approve.');
+                return;
+            }
+
             try {
-                const response = await fetch('/api/v1/interventions/int-001/approve', {
+                const response = await fetch(`/api/v2/hitl/requests/${selectedRequestId}/resolve`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ feedback, approved: true })
+                    body: JSON.stringify({ notes: feedback, approved: true })
                 });
                 
                 if (response.ok) {
@@ -902,11 +907,16 @@ def login_required_deprecated(f):
                 return;
             }
             
+            if (!selectedRequestId) {
+                alert('Select a request to reject.');
+                return;
+            }
+
             try {
-                const response = await fetch('/api/v1/interventions/int-001/reject', {
+                const response = await fetch(`/api/v2/hitl/requests/${selectedRequestId}/resolve`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ feedback, approved: false })
+                    body: JSON.stringify({ notes: feedback, approved: false })
                 });
                 
                 if (response.ok) {
@@ -918,38 +928,44 @@ def login_required_deprecated(f):
             }
         });
 
-        // Rollback buttons
+        // Rollback buttons (not implemented in v2)
         document.querySelectorAll('.timeline-btn.rollback').forEach(btn => {
-            btn.addEventListener('click', async () => {
-                if (!confirm('Are you sure you want to rollback to this checkpoint? This will undo all changes since then.')) {
-                    return;
-                }
-                
-                try {
-                    const response = await fetch('/api/v1/checkpoints/rollback', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ checkpoint_id: 'ckpt-001' })
-                    });
-                    
-                    if (response.ok) {
-                        alert('Rollback successful!');
-                        location.reload();
-                    }
-                } catch (err) {
-                    console.error('Error during rollback:', err);
-                }
+            btn.addEventListener('click', () => {
+                alert('Rollback is not supported in v2 yet.');
             });
         });
 
         // Load interventions from API
         async function loadInterventions() {
             try {
-                const response = await fetch('/api/v1/interventions/pending');
+                const response = await fetch('/api/v2/hitl/requests?resolved=false');
                 const data = await response.json();
-                
-                document.getElementById('pending-count').textContent = data.pending_count || 0;
-                console.log('Loaded interventions:', data);
+                const requests = data.requests || [];
+
+                document.getElementById('pending-count').textContent = requests.length;
+
+                const list = document.getElementById('intervention-list');
+                list.innerHTML = '';
+
+                requests.forEach((req, index) => {
+                    const item = document.createElement('div');
+                    item.className = `intervention-item${index === 0 ? ' active' : ''}`;
+                    item.dataset.id = req.id;
+                    item.innerHTML = `
+                        <div class="intervention-item-header">
+                            <span class="intervention-item-title">${req.prompt}</span>
+                        </div>
+                        <div class="intervention-item-desc">${JSON.stringify(req.context || {})}</div>
+                        <div class="intervention-item-time">${req.created_at}</div>
+                        <span class="intervention-item-badge pending">Pending</span>
+                    `;
+                    list.appendChild(item);
+                    if (index === 0) {
+                        selectedRequestId = req.id;
+                    }
+                });
+
+                bindInterventionSelection();
             } catch (err) {
                 console.error('Error loading interventions:', err);
             }
@@ -963,15 +979,16 @@ def login_required_deprecated(f):
 
         // WebSocket for real-time updates
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const ws = new WebSocket(`${protocol}//${window.location.host}/ws/hitl`);
+        const ws = new WebSocket(`${protocol}//${window.location.host}/api/v2/ws/deltas`);
         
         ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            
-            if (data.type === 'new_intervention') {
-                // Add new intervention to list
-                console.log('New intervention:', data);
-                loadInterventions();
+            try {
+                const data = JSON.parse(event.data);
+                if (data.type === 'state_delta') {
+                    loadInterventions();
+                }
+            } catch (err) {
+                console.error('WS parse error:', err);
             }
         };
     </script>

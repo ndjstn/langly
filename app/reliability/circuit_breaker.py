@@ -46,12 +46,22 @@ class CircuitBreakerConfig:
         listeners: Callbacks for state change events.
     """
 
-    name: str
+    name: str = "default"
     fail_max: int = 5
     reset_timeout: float = 30.0
+    failure_threshold: int = 5
+    success_threshold: int = 3
+    timeout: float = 30.0
     exclude_exceptions: tuple[type[Exception], ...] = ()
     include_exceptions: tuple[type[Exception], ...] | None = None
     listeners: list[Any] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        """Sync legacy fields with fail_max/reset_timeout for compatibility."""
+        if self.fail_max == 5 and self.failure_threshold != 5:
+            self.fail_max = self.failure_threshold
+        if self.reset_timeout == 30.0 and self.timeout != 30.0:
+            self.reset_timeout = self.timeout
 
 
 @dataclass
@@ -79,6 +89,55 @@ class CircuitBreakerMetrics:
     last_failure_time: datetime | None = None
     last_success_time: datetime | None = None
     opened_count: int = 0
+
+
+class CircuitBreaker:
+    """Simple circuit breaker for tests/compatibility."""
+
+    def __init__(self, name: str, config: CircuitBreakerConfig | None = None) -> None:
+        self.name = name
+        self.config = config or CircuitBreakerConfig(name=name)
+        self.state = CircuitState.CLOSED
+        self.failure_count = 0
+        self.success_count = 0
+        self._last_failure_time: datetime | None = None
+
+    def allow_call(self) -> bool:
+        if self.state == CircuitState.CLOSED:
+            return True
+        if self.state == CircuitState.OPEN:
+            if self._last_failure_time is None:
+                return False
+            elapsed = (datetime.now() - self._last_failure_time).total_seconds()
+            if elapsed >= self.config.timeout:
+                self.state = CircuitState.HALF_OPEN
+                self.success_count = 0
+                return True
+            return False
+        return True
+
+    def record_success(self) -> None:
+        if self.state == CircuitState.HALF_OPEN:
+            self.success_count += 1
+            if self.success_count >= self.config.success_threshold:
+                self.reset()
+            return
+        self.success_count += 1
+
+    def record_failure(self) -> None:
+        self.failure_count += 1
+        self._last_failure_time = datetime.now()
+        if self.state == CircuitState.HALF_OPEN:
+            self.state = CircuitState.OPEN
+            return
+        if self.failure_count >= self.config.failure_threshold:
+            self.state = CircuitState.OPEN
+
+    def reset(self) -> None:
+        self.state = CircuitState.CLOSED
+        self.failure_count = 0
+        self.success_count = 0
+        self._last_failure_time = None
 
 
 class CircuitBreakerListener(pybreaker.CircuitBreakerListener):
@@ -365,6 +424,7 @@ class CircuitBreakerRegistry:
     def __init__(self) -> None:
         """Initialize the circuit breaker registry."""
         self._breakers: dict[str, ManagedCircuitBreaker] = {}
+        self._simple_breakers: dict[str, CircuitBreaker] = {}
         self._lock = asyncio.Lock()
 
     def register(
@@ -405,16 +465,24 @@ class CircuitBreakerRegistry:
 
     def get_or_create(
         self,
-        config: CircuitBreakerConfig,
-    ) -> ManagedCircuitBreaker:
+        config: CircuitBreakerConfig | str,
+    ) -> ManagedCircuitBreaker | CircuitBreaker:
         """Get an existing circuit breaker or create a new one.
 
         Args:
-            config: Configuration for the circuit breaker.
+            config: Configuration for the circuit breaker or name (simple).
 
         Returns:
             The circuit breaker (existing or new).
         """
+        if isinstance(config, str):
+            name = config
+            if name in self._simple_breakers:
+                return self._simple_breakers[name]
+            breaker = CircuitBreaker(name=name)
+            self._simple_breakers[name] = breaker
+            return breaker
+
         if config.name in self._breakers:
             return self._breakers[config.name]
         return self.register(config)
@@ -441,6 +509,16 @@ class CircuitBreakerRegistry:
             List of circuit breaker names.
         """
         return list(self._breakers.keys())
+
+    def get_all(self) -> list[CircuitBreaker]:
+        """Return all simple circuit breakers (compat)."""
+        return list(self._simple_breakers.values())
+
+    def get_states(self) -> dict[str, CircuitState]:
+        """Return states for simple circuit breakers (compat)."""
+        return {
+            name: breaker.state for name, breaker in self._simple_breakers.items()
+        }
 
     def get_all_metrics(self) -> dict[str, CircuitBreakerMetrics]:
         """Get metrics for all registered circuit breakers.

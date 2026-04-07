@@ -189,7 +189,7 @@ class AgentStateSchema(BaseModel):
         completed_tasks: Tasks that have been processed.
         iteration_count: Number of workflow iterations.
         error: Current error state if any.
-        needs_human_input: Whether human intervention is needed.
+        requires_human_input: Whether human intervention is needed.
         human_input_request: Details of what input is needed.
     """
 
@@ -202,7 +202,7 @@ class AgentStateSchema(BaseModel):
     completed_tasks: list[Task] = Field(default_factory=list)
     iteration_count: int = 0
     error: str | None = None
-    needs_human_input: bool = False
+    requires_human_input: bool = False
     human_input_request: str | None = None
 
 
@@ -304,6 +304,55 @@ class ChatResponse(BaseModel):
     agent_type: AgentType
     status: WorkflowStatus
     tasks: list[Task] = Field(default_factory=list)
+
+
+# =============================================================================
+# Legacy API Schemas (tests/compat)
+# =============================================================================
+
+
+class TaskCreate(BaseModel):
+    """Legacy task creation schema."""
+
+    title: str = Field(..., min_length=1)
+    description: str
+    task_type: TaskType
+    priority: TaskPriority = TaskPriority.MEDIUM
+
+
+class TaskResponse(BaseModel):
+    """Legacy task response schema."""
+
+    task_id: str
+    title: str
+    description: str
+    task_type: TaskType
+    priority: TaskPriority
+    status: TaskStatus
+
+
+class AgentResponse(BaseModel):
+    """Legacy agent response schema."""
+
+    agent_id: str
+    agent_type: AgentType
+    name: str
+    status: str
+
+
+class WorkflowCreate(BaseModel):
+    """Legacy workflow creation schema."""
+
+    name: str
+    task_id: str
+
+
+class WorkflowResponse(BaseModel):
+    """Legacy workflow response schema."""
+
+    workflow_id: str
+    name: str
+    status: WorkflowStatus
 
 
 class HealthStatus(BaseModel):

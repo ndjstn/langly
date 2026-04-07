@@ -55,7 +55,7 @@ class AgentState(TypedDict):
         error: Current error message if any.
         session_id: Unique identifier for this conversation session.
         thread_id: LangGraph thread identifier for checkpointing.
-        requires_human_review: Flag indicating HITL intervention needed.
+        requires_human_input: Flag indicating HITL intervention needed.
         human_feedback: Feedback received from human intervention.
         parallel_branches: Active parallel execution branches.
         last_agent_output: Most recent agent response for routing.
@@ -88,7 +88,7 @@ class AgentState(TypedDict):
     thread_id: str
 
     # Human-in-the-loop
-    requires_human_review: bool
+    requires_human_input: bool
     human_feedback: str | None
 
     # Parallel execution
@@ -133,7 +133,7 @@ def create_initial_state(
         error=None,
         session_id=session_id,
         thread_id=thread_id,
-        requires_human_review=False,
+        requires_human_input=False,
         human_feedback=None,
         parallel_branches=[],
         last_agent_output=None,
@@ -227,7 +227,7 @@ def complete_task(
     }
 
 
-def set_requires_human_review(reason: str) -> dict[str, Any]:
+def set_requires_human_input(reason: str) -> dict[str, Any]:
     """
     Return state update to flag for human review.
 
@@ -238,13 +238,13 @@ def set_requires_human_review(reason: str) -> dict[str, Any]:
         Dict with human review flags set.
     """
     return {
-        "requires_human_review": True,
+        "requires_human_input": True,
         "task_status": TaskStatus.NEEDS_REVIEW,
         "metadata": {"human_review_reason": reason},
     }
 
 
-def clear_human_review(feedback: str | None = None) -> dict[str, Any]:
+def clear_human_input(feedback: str | None = None) -> dict[str, Any]:
     """
     Return state update to clear human review flag.
 
@@ -255,7 +255,17 @@ def clear_human_review(feedback: str | None = None) -> dict[str, Any]:
         Dict clearing human review flags.
     """
     return {
-        "requires_human_review": False,
+        "requires_human_input": False,
         "human_feedback": feedback,
         "task_status": TaskStatus.IN_PROGRESS,
     }
+
+
+def set_requires_human_review(reason: str) -> dict[str, Any]:
+    """Backward-compatible wrapper for set_requires_human_input."""
+    return set_requires_human_input(reason)
+
+
+def clear_human_review(feedback: str | None = None) -> dict[str, Any]:
+    """Backward-compatible wrapper for clear_human_input."""
+    return clear_human_input(feedback)

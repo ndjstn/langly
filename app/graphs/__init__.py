@@ -7,6 +7,7 @@ and checkpointing utilities.
 """
 from app.graphs.checkpointer import (
     CheckpointManager,
+    create_checkpointer,
     create_memory_checkpointer,
     get_checkpointer,
 )
@@ -54,6 +55,7 @@ __all__ = [
     "build_workflow",
     "create_simple_workflow",
     # Checkpointing
+    "create_checkpointer",
     "create_memory_checkpointer",
     "get_checkpointer",
     "CheckpointManager",

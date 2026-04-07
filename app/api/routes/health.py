@@ -170,6 +170,12 @@ async def liveness() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@router.get("/live")
+async def live_alias() -> dict[str, str]:
+    """Alias for liveness probe."""
+    return await liveness()
+
+
 @router.get("/readiness")
 async def readiness() -> dict[str, str]:
     """
@@ -198,6 +204,12 @@ async def readiness() -> dict[str, str]:
             status_code=503,
             detail=f"Service not ready: {str(e)}",
         ) from e
+
+
+@router.get("/ready")
+async def ready_alias() -> dict[str, str]:
+    """Alias for readiness probe."""
+    return await readiness()
 
 
 @router.get("/info", response_model=SystemInfo)

@@ -92,6 +92,19 @@ class WorkflowListResponse(BaseModel):
     page_size: int
 
 
+class WorkflowSessionRequest(BaseModel):
+    """Request to create a workflow session."""
+
+    name: str = Field(..., min_length=1)
+
+
+class WorkflowSessionResponse(BaseModel):
+    """Response for a workflow session."""
+
+    session_id: str
+    name: str
+
+
 # =============================================================================
 # In-memory workflow storage (replace with persistent storage in production)
 # =============================================================================
@@ -215,6 +228,17 @@ async def trigger_workflow(
         status=WorkflowStatus.PENDING,
         message="Workflow triggered successfully",
         created_at=created_at,
+    )
+
+
+@router.post("/sessions", response_model=WorkflowSessionResponse)
+async def create_session(
+    payload: WorkflowSessionRequest,
+) -> WorkflowSessionResponse:
+    """Create a lightweight workflow session."""
+    return WorkflowSessionResponse(
+        session_id=str(uuid.uuid4()),
+        name=payload.name,
     )
 
 

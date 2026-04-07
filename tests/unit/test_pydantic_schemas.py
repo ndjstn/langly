@@ -286,7 +286,7 @@ class TestAgentStateSchema:
         assert state.completed_tasks == []
         assert state.iteration_count == 0
         assert state.error is None
-        assert state.needs_human_input is False
+        assert state.requires_human_input is False
         assert state.human_input_request is None
 
     def test_agent_state_with_messages(self) -> None:

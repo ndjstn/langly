@@ -519,10 +519,18 @@ class WorkflowManager:
         # Import here to avoid circular imports
         from app.graphs.checkpointer import create_checkpointer
         from app.graphs.nodes import NodeFactory
+        from app.llm.provider import get_llm_for_agent
+        from app.core.schemas import AgentType
 
         try:
-            # Create node factory with default configuration
-            node_factory = NodeFactory()
+            # Create node factory with per-agent model selection
+            def llm_provider(agent_type: AgentType) -> Any:
+                return get_llm_for_agent(agent_type.value)
+
+            node_factory = NodeFactory(
+                llm_provider=llm_provider,
+                moe_llm_provider=llm_provider,
+            )
 
             # Create checkpointer
             checkpointer = create_checkpointer()

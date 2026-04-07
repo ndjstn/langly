@@ -75,13 +75,15 @@ class ComponentHealth(BaseModel):
     """
 
     name: str
-    component_type: ComponentType
+    component_type: ComponentType | None = None
     status: HealthStatus = HealthStatus.UNKNOWN
     last_check: datetime | None = None
     response_time_ms: float | None = None
+    latency_ms: float | None = None
     consecutive_failures: int = 0
     consecutive_successes: int = 0
     error_message: str | None = None
+    error: str | None = None
     details: dict[str, Any] = field(default_factory=dict)
 
     model_config = {"arbitrary_types_allowed": True}
@@ -180,6 +182,19 @@ class HealthChecker:
         )
         logger.debug(f"Registered health check: {name}")
 
+    def register_check(
+        self,
+        name: str,
+        check_func: Callable[[], Coroutine[Any, Any, ComponentHealth]],
+    ) -> None:
+        """Legacy registration helper accepting ComponentHealth return."""
+        self.register(
+            name=name,
+            component_type=ComponentType.API,
+            check_func=check_func,
+            config=HealthCheckConfig(success_threshold=1, failure_threshold=1),
+        )
+
     def unregister(self, name: str) -> None:
         """Unregister a health check.
 
@@ -213,10 +228,17 @@ class HealthChecker:
 
         try:
             # Run check with timeout
-            healthy, details = await asyncio.wait_for(
+            result = await asyncio.wait_for(
                 check.check_func(),
                 timeout=check.config.timeout_seconds,
             )
+
+            if isinstance(result, ComponentHealth):
+                status = result
+                self._status[name] = status
+                return status
+
+            healthy, details = result
 
             response_time = (time.time() - start_time) * 1000
 

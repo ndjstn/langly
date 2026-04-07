@@ -40,6 +40,7 @@ class AgentError(LanglyError):
         self,
         message: str,
         agent_type: str | None = None,
+        agent_id: str | None = None,
         details: dict | None = None
     ) -> None:
         """Initialize the agent error.
@@ -50,7 +51,8 @@ class AgentError(LanglyError):
             details: Optional dictionary with additional context.
         """
         super().__init__(message, details)
-        self.agent_type = agent_type
+        self.agent_type = agent_type or agent_id
+        self.agent_id = agent_id
 
 
 class AgentNotFoundError(AgentError):
@@ -447,6 +449,19 @@ class LanglyMemoryError(LanglyError):
     """
 
     pass
+
+
+class MemoryError(LanglyMemoryError):
+    """Legacy MemoryError with operation context."""
+
+    def __init__(
+        self,
+        message: str,
+        operation: str | None = None,
+        details: dict | None = None,
+    ) -> None:
+        super().__init__(message, details)
+        self.operation = operation
 
 
 class MemoryStoreError(LanglyMemoryError):

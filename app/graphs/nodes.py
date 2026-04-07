@@ -6,6 +6,7 @@ Each node wraps an agent's process() method and handles state transitions.
 """
 from __future__ import annotations
 
+import inspect
 import logging
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
@@ -41,8 +42,11 @@ class NodeFactory:
 
     def __init__(
         self,
-        llm_provider: Callable[[], BaseChatModel],
-        moe_llm_provider: Callable[[], BaseChatModel] | None = None,
+        llm_provider: Callable[[AgentType], BaseChatModel]
+        | Callable[[], BaseChatModel],
+        moe_llm_provider: Callable[[AgentType], BaseChatModel]
+        | Callable[[], BaseChatModel]
+        | None = None,
     ) -> None:
         """
         Initialize the NodeFactory.
@@ -54,6 +58,32 @@ class NodeFactory:
         self._llm_provider = llm_provider
         self._moe_llm_provider = moe_llm_provider or llm_provider
         self._agents: dict[AgentType, Any] = {}
+
+    def _call_llm_provider(
+        self,
+        provider: Callable[[AgentType], BaseChatModel]
+        | Callable[[], BaseChatModel],
+        agent_type: AgentType,
+    ) -> BaseChatModel:
+        """Call provider with or without agent_type based on signature."""
+        try:
+            signature = inspect.signature(provider)
+        except (TypeError, ValueError):
+            return provider()
+
+        if len(signature.parameters) == 0:
+            return provider()
+
+        return provider(agent_type)
+
+    def _get_llm(self, agent_type: AgentType) -> BaseChatModel:
+        """Resolve the LLM for an agent type using the configured provider."""
+        provider = (
+            self._moe_llm_provider
+            if agent_type == AgentType.ROUTER
+            else self._llm_provider
+        )
+        return self._call_llm_provider(provider, agent_type)
 
     def _get_agent(self, agent_type: AgentType) -> Any:
         """
@@ -94,15 +124,23 @@ class NodeFactory:
         )
 
         agent_map: dict[AgentType, Callable[[], Any]] = {
-            AgentType.PM: lambda: PMAgent(llm=self._llm_provider()),
-            AgentType.CODER: lambda: CoderAgent(llm=self._llm_provider()),
-            AgentType.ARCHITECT: lambda: ArchitectAgent(
-                llm=self._llm_provider()
+            AgentType.PM: lambda: PMAgent(llm=self._get_llm(AgentType.PM)),
+            AgentType.CODER: lambda: CoderAgent(
+                llm=self._get_llm(AgentType.CODER)
             ),
-            AgentType.TESTER: lambda: TesterAgent(llm=self._llm_provider()),
-            AgentType.REVIEWER: lambda: ReviewerAgent(llm=self._llm_provider()),
-            AgentType.DOCS: lambda: DocsAgent(llm=self._llm_provider()),
-            AgentType.ROUTER: lambda: RouterAgent(llm=self._moe_llm_provider()),
+            AgentType.ARCHITECT: lambda: ArchitectAgent(
+                llm=self._get_llm(AgentType.ARCHITECT)
+            ),
+            AgentType.TESTER: lambda: TesterAgent(
+                llm=self._get_llm(AgentType.TESTER)
+            ),
+            AgentType.REVIEWER: lambda: ReviewerAgent(
+                llm=self._get_llm(AgentType.REVIEWER)
+            ),
+            AgentType.DOCS: lambda: DocsAgent(llm=self._get_llm(AgentType.DOCS)),
+            AgentType.ROUTER: lambda: RouterAgent(
+                llm=self._get_llm(AgentType.ROUTER)
+            ),
         }
 
         creator = agent_map.get(agent_type)

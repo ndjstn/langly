@@ -109,7 +109,7 @@ class PMAgent(BaseAgent):
 
         # Check if human review is needed
         if parsed.get("needs_human_review"):
-            updates["requires_human_review"] = True
+            updates["requires_human_input"] = True
             updates["task_status"] = TaskStatus.NEEDS_REVIEW
 
         return updates

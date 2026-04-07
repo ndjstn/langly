@@ -167,6 +167,10 @@ server.log
 *.log
 .secrets.baseline
 cookies.txt
+zettelkasten/
+uploads/
+runtime_v2.db
+logs/
 
 # OS generated files
 .DS_Store

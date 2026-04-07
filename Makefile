@@ -88,6 +88,9 @@ test-api: ## Run API endpoint tests
 test-fast: ## Run fast tests (no slow tests)
 	./scripts/test.sh --fast --unit
 
+test-v2: ## Run v2 tests only
+	uv run pytest tests/v2
+
 coverage: ## Generate coverage report
 	./scripts/test.sh --coverage --html
 	@echo "Coverage report: htmlcov/index.html"
