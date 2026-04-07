@@ -166,6 +166,10 @@ def _summarize_file_read(output: Any) -> str:
             return ""
         first = files[0]
         path = first.get("path") or ""
+        excerpt = first.get("excerpt") or ""
+        if excerpt:
+            snippet = " ".join(excerpt.strip().split())[:240]
+            return f"{path} excerpt: {snippet}"
         content = first.get("content") or ""
         snippet = " ".join(content.strip().split())[:240]
         if snippet:

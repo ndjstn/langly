@@ -599,6 +599,7 @@ class FileReadToolRunner(ToolRunner):
     def run(self, context: HarnessToolContext) -> ToolResult:
         start = time.time()
         paths = _extract_paths(context.message)
+        keywords = _extract_symbol_keywords(context.message)
         results: list[dict[str, Any]] = []
         for path in paths[: self.max_files]:
             p = Path(path).expanduser()
@@ -615,12 +616,15 @@ class FileReadToolRunner(ToolRunner):
                     results.append({"path": str(p), "binary": True, "truncated": truncated})
                     continue
                 text = data.decode("utf-8", errors="replace")
+                excerpt, match = _extract_excerpt(text, keywords)
                 results.append(
                     {
                         "path": str(p),
                         "truncated": truncated,
                         "lines": text.count("\n") + 1,
                         "content": text,
+                        "excerpt": excerpt,
+                        "match": match,
                     }
                 )
             except Exception as exc:
@@ -1154,6 +1158,39 @@ def _extract_image_paths_from_message(message: str) -> list[str]:
         seen.add(path)
         images.append(path)
     return images
+
+
+def _extract_symbol_keywords(message: str) -> list[str]:
+    if not message:
+        return []
+    tokens = re.findall(r"[A-Za-z_][A-Za-z0-9_]{3,}", message)
+    # prioritize snake_case identifiers
+    snake = [tok for tok in tokens if "_" in tok]
+    ordered = snake + [tok for tok in tokens if tok not in snake]
+    seen: set[str] = set()
+    result: list[str] = []
+    for tok in ordered:
+        if tok in seen:
+            continue
+        seen.add(tok)
+        result.append(tok)
+        if len(result) >= 5:
+            break
+    return result
+
+
+def _extract_excerpt(text: str, keywords: list[str]) -> tuple[str | None, str | None]:
+    if not text or not keywords:
+        return None, None
+    lines = text.splitlines()
+    for idx, line in enumerate(lines):
+        for kw in keywords:
+            if kw in line:
+                start = max(idx - 5, 0)
+                end = min(idx + 6, len(lines))
+                excerpt = "\n".join(lines[start:end])
+                return excerpt, kw
+    return None, None
 
 
 def _scan_python_symbols(path: Path) -> dict[str, list[str]]:
