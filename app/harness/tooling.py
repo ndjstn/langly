@@ -841,7 +841,7 @@ def _extract_keywords(message: str) -> list[str]:
 
 
 def _extract_first_url(message: str) -> str | None:
-    match = re.search(r"(https?://[^\\s)]+)", message or "", re.IGNORECASE)
+    match = re.search(r"(https?://[^\s)]+)", message or "", re.IGNORECASE)
     if not match:
         return None
     return match.group(1).strip(".,)")
@@ -1066,7 +1066,7 @@ def _extract_image_paths(payload: Any) -> list[str]:
 def _extract_paths(message: str) -> list[str]:
     if not message:
         return []
-    matches = re.findall(r"(?:\\.?/[^\\s'\\\"]+)", message)
+    matches = re.findall(r"(?:\.?/[^\s'\"\n]+)", message)
     return [m.strip(".,)") for m in matches]
 
 
@@ -1074,7 +1074,7 @@ def _extract_image_paths_from_message(message: str) -> list[str]:
     if not message:
         return []
     candidates: list[str] = []
-    attach_split = re.split(r"attachments:\\s*", message, flags=re.IGNORECASE, maxsplit=1)
+    attach_split = re.split(r"attachments:\s*", message, flags=re.IGNORECASE, maxsplit=1)
     if len(attach_split) > 1:
         for line in attach_split[1].splitlines():
             cleaned = line.strip().strip("`")
@@ -1082,7 +1082,7 @@ def _extract_image_paths_from_message(message: str) -> list[str]:
                 candidates.append(cleaned)
     candidates.extend(
         re.findall(
-            r"([\\w./~-]+\\.(?:png|jpe?g|webp|bmp|gif))",
+            r"([\w./~-]+\.(?:png|jpe?g|webp|bmp|gif))",
             message,
             flags=re.IGNORECASE,
         )

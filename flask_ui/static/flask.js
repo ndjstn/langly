@@ -296,6 +296,7 @@ const renderAttachments = () => {
     <div class="attachment-item">
       <img src="${item.preview}" alt="attachment" />
       <div class="attachment-path">${escapeHtml(item.path)}</div>
+      <a class="attachment-open" href="${item.preview}" target="_blank" rel="noreferrer">Open</a>
     </div>
   `).join('');
 };

@@ -72,6 +72,9 @@ class PromptEnhancer:
             header_lines.append(
                 "Image present: use vision tool output for image analysis. Greptile is for code search, not images."
             )
+            header_lines.append(
+                "Do not infer image contents from filenames or paths. If vision tools fail, say you cannot analyze."
+            )
             applied.append("vision_guidance")
 
         header = "\n".join(header_lines)
@@ -147,4 +150,4 @@ def _has_image(message: str) -> bool:
     lowered = message.lower()
     if "attachment" in lowered or "screenshot" in lowered or "image" in lowered or "photo" in lowered:
         return True
-    return bool(re.search(r"\\.(png|jpe?g|webp|bmp|gif)\\b", lowered))
+    return bool(re.search(r"\.(png|jpe?g|webp|bmp|gif)\b", lowered))

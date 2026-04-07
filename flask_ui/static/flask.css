@@ -228,6 +228,8 @@ body.mode-operator main { grid-template-columns: 1fr 1fr; }
 
 .attachments img {
   max-width: 100%;
+  max-height: 140px;
+  object-fit: cover;
   border-radius: 10px;
   border: 1px solid var(--panel-border);
 }
@@ -244,6 +246,12 @@ body.mode-operator main { grid-template-columns: 1fr 1fr; }
 .attachment-path {
   font-size: 12px;
   color: var(--muted);
+}
+
+.attachment-open {
+  font-size: 12px;
+  color: var(--accent-2);
+  text-decoration: none;
 }
 
 .upload-btn {
