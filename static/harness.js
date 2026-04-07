@@ -718,6 +718,12 @@ if (iterationsAuto) {
 if (themeSelect) {
   const storedTheme = localStorage.getItem("harness-theme") || "catppuccin";
   document.body.classList.add(`theme-${storedTheme}`);
+  const lightThemes = new Set(["catppuccin", "github"]);
+  const applyThemeMode = (theme) => {
+    document.body.classList.toggle("theme-light", lightThemes.has(theme));
+    document.body.classList.toggle("theme-dark", !lightThemes.has(theme));
+  };
+  applyThemeMode(storedTheme);
   themeSelect.value = storedTheme;
   themeSelect.addEventListener("change", () => {
     const value = themeSelect.value;
@@ -726,6 +732,7 @@ if (themeSelect) {
       .filter((cls) => !cls.startsWith("theme-"))
       .join(" ");
     document.body.classList.add(`theme-${value}`);
+    applyThemeMode(value);
     localStorage.setItem("harness-theme", value);
   });
 }

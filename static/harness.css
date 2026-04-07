@@ -41,6 +41,14 @@ body {
   color: var(--ink);
 }
 
+body.theme-dark {
+  color: var(--ink);
+}
+
+body.theme-light {
+  color: var(--ink);
+}
+
 header {
   padding: 28px 40px 16px;
   border-bottom: 2px solid var(--line);
@@ -67,10 +75,19 @@ main {
 
 .panel {
   background: var(--panel);
+  background: color-mix(in srgb, var(--panel) 82%, #ffffff 18%);
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 16px;
   box-shadow: var(--shadow);
+}
+
+body.theme-light .panel {
+  background: color-mix(in srgb, var(--panel) 92%, #000 8%);
+}
+
+body.theme-dark .panel {
+  background: color-mix(in srgb, var(--panel) 85%, #ffffff 10%);
 }
 
 .panel.resizable {
@@ -153,6 +170,15 @@ main {
   padding: 12px;
   border-radius: 10px;
   background: var(--panel);
+  background: color-mix(in srgb, var(--panel) 78%, #ffffff 22%);
+}
+
+body.theme-dark .chat-window {
+  background: color-mix(in srgb, var(--panel) 70%, #0b0f18 30%);
+}
+
+body.theme-light .chat-window {
+  background: color-mix(in srgb, var(--panel) 95%, #000 5%);
 }
 
 .attachments {
@@ -223,6 +249,14 @@ main {
   background: rgba(255, 255, 255, 0.8);
   border: 1px solid var(--line);
   border-bottom-left-radius: 6px;
+}
+
+body.theme-dark .msg.assistant {
+  background: color-mix(in srgb, var(--panel) 80%, #1b1f2a 20%);
+}
+
+body.theme-dark .msg.system {
+  background: color-mix(in srgb, var(--panel) 75%, #1b1f2a 25%);
 }
 
 .msg.assistant a {
@@ -315,6 +349,10 @@ select {
   font-size: 12px;
 }
 
+body.theme-dark .tag {
+  background: color-mix(in srgb, var(--panel) 70%, #101522 30%);
+}
+
 pre {
   background: #14110f;
   color: #f7f1e1;
@@ -356,6 +394,14 @@ pre {
 
 .file-item:hover {
   background: rgba(255, 255, 255, 0.9);
+}
+
+body.theme-dark .file-item {
+  background: color-mix(in srgb, var(--panel) 70%, #111624 30%);
+}
+
+body.theme-dark .file-item:hover {
+  background: color-mix(in srgb, var(--panel) 60%, #141a26 40%);
 }
 
 .file-viewer {
@@ -462,8 +508,12 @@ a:hover {
   font-size: 12px;
   padding: 6px 8px;
   border-radius: 8px;
-  background: #fff5e4;
-  border: 1px solid #eddcc4;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--line);
+}
+
+body.theme-dark .status-row {
+  background: color-mix(in srgb, var(--panel) 70%, #111624 30%);
 }
 
 .status-row.status-done {

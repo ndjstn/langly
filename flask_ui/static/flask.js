@@ -386,11 +386,18 @@ if (themeSelect) {
   const storedTheme = localStorage.getItem('flask-theme') || themeSelect.value;
   document.body.className = document.body.className.replace(/theme-[^\s]+/g, '').trim();
   document.body.classList.add(`theme-${storedTheme}`);
+  const lightThemes = new Set(['catppuccin', 'github']);
+  const applyThemeMode = (theme) => {
+    document.body.classList.toggle('theme-light', lightThemes.has(theme));
+    document.body.classList.toggle('theme-dark', !lightThemes.has(theme));
+  };
+  applyThemeMode(storedTheme);
   themeSelect.value = storedTheme;
   themeSelect.addEventListener('change', () => {
     const value = themeSelect.value;
     document.body.className = document.body.className.replace(/theme-[^\s]+/g, '').trim();
     document.body.classList.add(`theme-${value}`);
+    applyThemeMode(value);
     localStorage.setItem('flask-theme', value);
   });
 }

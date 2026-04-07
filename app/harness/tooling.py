@@ -348,8 +348,8 @@ class TaskwarriorToolRunner(ToolRunner):
 
 
 class MCPBrowserToolRunner(ToolRunner):
-    def __init__(self, endpoint: str, retry_policy: RetryPolicy) -> None:
-        super().__init__("browser", retry_policy)
+    def __init__(self, endpoint: str, retry_policy: RetryPolicy, *, name: str = "browser") -> None:
+        super().__init__(name, retry_policy)
         self.endpoint = endpoint
 
     def run(self, context: HarnessToolContext) -> ToolResult:
@@ -683,6 +683,8 @@ class AutoToolRunner:
             "jj": int(os.getenv("LANGLY_TOOL_RETRY_JJ", "0")),
             "taskwarrior": int(os.getenv("LANGLY_TOOL_RETRY_TASKWARRIOR", "0")),
             "browser": int(os.getenv("LANGLY_TOOL_RETRY_BROWSER", "0")),
+            "playwright": int(os.getenv("LANGLY_TOOL_RETRY_PLAYWRIGHT", "0")),
+            "chrome_devtools": int(os.getenv("LANGLY_TOOL_RETRY_CHROME_DEVTOOLS", "0")),
             "taskwarrior_mcp": int(os.getenv("LANGLY_TOOL_RETRY_TASK_MCP", "0")),
             "preflight": int(os.getenv("LANGLY_TOOL_RETRY_PREFLIGHT", "0")),
             "mermaid": int(os.getenv("LANGLY_TOOL_RETRY_MERMAID", "0")),
@@ -746,7 +748,15 @@ class AutoToolRunner:
 
         browser_url = os.getenv("LANGLY_MCP_BROWSER_URL")
         if browser_url:
-            registry.register(MCPBrowserToolRunner(browser_url, self._policy_for("browser")))
+            registry.register(MCPBrowserToolRunner(browser_url, self._policy_for("browser"), name="browser"))
+
+        playwright_url = os.getenv("LANGLY_MCP_PLAYWRIGHT_URL")
+        if playwright_url:
+            registry.register(MCPBrowserToolRunner(playwright_url, self._policy_for("playwright"), name="playwright"))
+
+        chrome_url = os.getenv("LANGLY_MCP_CHROME_URL")
+        if chrome_url:
+            registry.register(MCPBrowserToolRunner(chrome_url, self._policy_for("chrome_devtools"), name="chrome_devtools"))
 
         registry.register(MermaidToolRunner(self._policy_for("mermaid")))
 

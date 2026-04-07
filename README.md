@@ -162,6 +162,13 @@ export LANGLY_MCP_BROWSER_URL=http://localhost:3001/mcp
 export LANGLY_MCP_BROWSER_AUTO=true
 ```
 
+Playwright / Chrome DevTools MCP:
+
+```bash
+export LANGLY_MCP_PLAYWRIGHT_URL=http://localhost:3002/mcp
+export LANGLY_MCP_CHROME_URL=http://localhost:3003/mcp
+```
+
 Vision pipeline example (runs after screenshots):
 
 ```bash
