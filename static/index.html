@@ -51,6 +51,10 @@
             <h2>Chat</h2>
             <span class="panel-hint">Streaming tokens + formatted output</span>
           </div>
+          <div class="chat-actions">
+            <button id="copy-chat" class="ghost-btn">Copy chat</button>
+            <button id="copy-last" class="ghost-btn">Copy last response</button>
+          </div>
           <div class="panel-body">
             <div id="chat-window" class="chat-window"></div>
             <div class="attachments">
@@ -119,15 +123,15 @@
                 <label><input type="checkbox" class="auto-tool" value="lint" checked /> lint</label>
                 <label><input type="checkbox" class="auto-tool" value="jj" checked /> jj</label>
                 <label><input type="checkbox" class="auto-tool" value="taskwarrior" checked /> taskwarrior</label>
-            <label><input type="checkbox" class="auto-tool" value="taskwarrior_mcp" checked /> taskwarrior_mcp</label>
-            <label><input type="checkbox" class="auto-tool" value="preflight" checked /> preflight</label>
-            <label><input type="checkbox" class="auto-tool" value="mermaid" checked /> mermaid</label>
-            <label><input type="checkbox" class="auto-tool" value="vision" checked /> vision</label>
-            <label><input type="checkbox" class="auto-tool" value="browser" checked /> browser</label>
-            <label><input type="checkbox" class="auto-tool" value="playwright" /> playwright</label>
-            <label><input type="checkbox" class="auto-tool" value="chrome_devtools" /> chrome devtools</label>
-          </div>
-        </div>
+                <label><input type="checkbox" class="auto-tool" value="taskwarrior_mcp" checked /> taskwarrior_mcp</label>
+                <label><input type="checkbox" class="auto-tool" value="preflight" checked /> preflight</label>
+                <label><input type="checkbox" class="auto-tool" value="mermaid" checked /> mermaid</label>
+                <label><input type="checkbox" class="auto-tool" value="vision" checked /> vision</label>
+                <label><input type="checkbox" class="auto-tool" value="browser" checked /> browser</label>
+                <label><input type="checkbox" class="auto-tool" value="playwright" checked /> playwright</label>
+                <label><input type="checkbox" class="auto-tool" value="chrome_devtools" checked /> chrome devtools</label>
+              </div>
+            </div>
             <div class="controls">
               <textarea id="message-input" placeholder="Ask anything. The harness will classify scope, run tools, and respond."></textarea>
               <button id="send-btn">Send</button>
@@ -137,11 +141,11 @@
       </section>
 
       <section class="panel-stack">
-        <details class="panel resizable" open>
+        <details class="panel resizable" data-span="full" open>
           <summary>Scope</summary>
           <div id="scope-panel"></div>
         </details>
-        <details class="panel resizable" open>
+        <details class="panel resizable" data-span="full" open>
           <summary>Status</summary>
           <div id="status-panel"></div>
         </details>

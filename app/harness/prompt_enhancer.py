@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import re
 from datetime import date
 from typing import Any
 
@@ -67,6 +68,12 @@ class PromptEnhancer:
             header_lines.append(tool_summary)
             applied.append("tool_summary")
 
+        if _has_image(message):
+            header_lines.append(
+                "Image present: use vision tool output for image analysis. Greptile is for code search, not images."
+            )
+            applied.append("vision_guidance")
+
         header = "\n".join(header_lines)
         enhanced_message = (
             f"{header}\n\n"
@@ -99,3 +106,12 @@ def _summarize_tools(tool_results: list[dict[str, Any]]) -> str:
         else:
             lines.append(f"- {name}: {status}")
     return "\n".join(lines)
+
+
+def _has_image(message: str) -> bool:
+    if not message:
+        return False
+    lowered = message.lower()
+    if "attachment" in lowered or "screenshot" in lowered or "image" in lowered or "photo" in lowered:
+        return True
+    return bool(re.search(r"\\.(png|jpe?g|webp|bmp|gif)\\b", lowered))

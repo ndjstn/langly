@@ -58,6 +58,10 @@ class ToolSelectionPolicy:
         if extract_urls(message):
             selected.add("browser")
 
+        if _has_image(message):
+            if "vision" in available:
+                selected.add("vision")
+
         if any(token in lowered for token in ["task", "todo", "kanban", "backlog"]):
             if "taskwarrior_mcp" in available:
                 selected.add("taskwarrior_mcp")
@@ -84,3 +88,12 @@ class ToolSelectionPolicy:
 
 def _has_path(message: str) -> bool:
     return bool(re.search(r"(?:\\.?/[^\\s'\\\"]+)", message or ""))
+
+
+def _has_image(message: str) -> bool:
+    if not message:
+        return False
+    lowered = message.lower()
+    if "attachment" in lowered or "screenshot" in lowered or "image" in lowered or "photo" in lowered:
+        return True
+    return bool(re.search(r"\\.(png|jpe?g|webp|bmp|gif)\\b", lowered))

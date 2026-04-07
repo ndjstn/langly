@@ -111,7 +111,7 @@ select {
 
 main {
   display: grid;
-  grid-template-columns: 1.2fr 0.8fr;
+  grid-template-columns: 1.6fr 0.6fr;
   gap: 20px;
   padding: 20px 28px 32px;
 }
@@ -152,13 +152,18 @@ body.mode-operator main { grid-template-columns: 1fr 1fr; }
 }
 
 .panel-stack {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
 .panel-stack details.panel {
   padding: 0;
+  grid-column: span 1;
+}
+
+.panel-stack details.panel[data-span="full"] {
+  grid-column: 1 / -1;
 }
 
 .panel-stack summary {
@@ -180,6 +185,26 @@ body.mode-operator main { grid-template-columns: 1fr 1fr; }
 
 .panel-stack details.panel > div {
   padding: 12px 16px 16px;
+}
+
+.chat-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.ghost-btn {
+  border: 1px solid var(--panel-border);
+  background: var(--surface);
+  color: var(--ink);
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.ghost-btn:hover {
+  background: var(--surface-strong);
 }
 
 .panel h2 { margin: 0 0 10px; font-size: 18px; }
@@ -243,6 +268,7 @@ body.mode-operator main { grid-template-columns: 1fr 1fr; }
   margin-bottom: 8px;
   line-height: 1.4;
   white-space: pre-wrap;
+  position: relative;
 }
 
 .chat-bubble.user {
@@ -256,6 +282,21 @@ body.mode-operator main { grid-template-columns: 1fr 1fr; }
   background: var(--bubble-assistant);
   color: var(--input-ink);
   border-bottom-left-radius: 6px;
+}
+
+.msg-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 6px;
+}
+
+.ghost-btn-small {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.msg-content {
+  white-space: pre-wrap;
 }
 
 .chat-bubble a { color: var(--accent-2); text-decoration: none; }

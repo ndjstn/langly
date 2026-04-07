@@ -172,10 +172,35 @@ const formatResponse = (text) => {
   return html;
 };
 
+const copyToClipboard = async (text) => {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (_err) {
+    const temp = document.createElement('textarea');
+    temp.value = text;
+    document.body.appendChild(temp);
+    temp.select();
+    document.execCommand('copy');
+    temp.remove();
+  }
+};
+
 const addBubble = (role, text) => {
   const el = document.createElement('div');
   el.className = `chat-bubble ${role}`;
-  el.innerHTML = formatResponse(text);
+  el.dataset.raw = text;
+  const actions = document.createElement('div');
+  actions.className = 'msg-actions';
+  const copyBtn = document.createElement('button');
+  copyBtn.type = 'button';
+  copyBtn.className = 'ghost-btn ghost-btn-small';
+  copyBtn.textContent = 'Copy';
+  copyBtn.dataset.copy = 'message';
+  actions.appendChild(copyBtn);
+  const content = document.createElement('div');
+  content.className = 'msg-content';
+  content.innerHTML = formatResponse(text);
+  el.append(actions, content);
   chatWindow.appendChild(el);
   chatWindow.scrollTop = chatWindow.scrollHeight;
   return el;
@@ -370,11 +395,42 @@ if (filesListEl) {
 chatWindow.addEventListener('click', (event) => {
   const btn = event.target.closest('.copy-btn');
   if (!btn) return;
+  if (btn.dataset.copy === 'message') {
+    const msg = btn.closest('.chat-bubble');
+    if (!msg) return;
+    const raw = msg.dataset.raw || '';
+    copyToClipboard(raw);
+    btn.textContent = 'Copied';
+    setTimeout(() => { btn.textContent = 'Copy'; }, 1200);
+    return;
+  }
   const code = btn.getAttribute('data-code') || '';
-  navigator.clipboard.writeText(code.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'));
+  copyToClipboard(code.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'));
   btn.textContent = 'Copied';
   setTimeout(() => { btn.textContent = 'Copy'; }, 1200);
 });
+
+const copyChatBtn = document.getElementById('copy-chat');
+if (copyChatBtn) {
+  copyChatBtn.addEventListener('click', () => {
+    const messages = Array.from(chatWindow.querySelectorAll('.chat-bubble'));
+    const lines = messages.map((msg) => {
+      const role = msg.classList.contains('user') ? 'User' : 'Assistant';
+      return `${role}:\n${msg.dataset.raw || ''}`;
+    }).join('\n\n');
+    copyToClipboard(lines);
+  });
+}
+
+const copyLastBtn = document.getElementById('copy-last');
+if (copyLastBtn) {
+  copyLastBtn.addEventListener('click', () => {
+    const messages = Array.from(chatWindow.querySelectorAll('.chat-bubble.assistant'));
+    const last = messages[messages.length - 1];
+    if (!last) return;
+    copyToClipboard(last.dataset.raw || '');
+  });
+}
 
 fullBtn.addEventListener('click', () => {
   document.body.classList.remove('mode-operator');

@@ -41,6 +41,10 @@
             <h2>Chat</h2>
             <span class="panel-hint">Streaming tokens + formatted output</span>
           </div>
+          <div class="chat-actions">
+            <button id="copy-chat" class="ghost-btn">Copy chat</button>
+            <button id="copy-last" class="ghost-btn">Copy last response</button>
+          </div>
           <div class="panel-body">
             <div class="chat-window" id="chat-window"></div>
             <div class="attachments">
@@ -81,7 +85,7 @@
         </div>
       </section>
       <section class="panel-stack">
-        <details class="panel resizable" open>
+        <details class="panel resizable" data-span="full" open>
           <summary>Status</summary>
           <div id="status"></div>
         </details>

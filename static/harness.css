@@ -89,7 +89,7 @@ header p {
 
 main {
   display: grid;
-  grid-template-columns: 1.2fr 0.8fr;
+  grid-template-columns: 1.6fr 0.6fr;
   gap: 24px;
   padding: 24px 40px 40px;
 }
@@ -127,13 +127,18 @@ main {
 }
 
 .panel-stack {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
 .panel-stack details.panel {
   padding: 0;
+  grid-column: span 1;
+}
+
+.panel-stack details.panel[data-span="full"] {
+  grid-column: 1 / -1;
 }
 
 .panel-stack summary {
@@ -159,6 +164,26 @@ main {
 
 .panel-stack details.panel > div {
   padding: 12px 16px 16px;
+}
+
+.chat-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.ghost-btn {
+  border: 1px solid var(--panel-border);
+  background: var(--surface);
+  color: var(--ink);
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.ghost-btn:hover {
+  background: var(--surface-strong);
 }
 
 .theme-select {
@@ -233,6 +258,22 @@ main {
   white-space: pre-wrap;
   max-width: 75%;
   overflow-wrap: anywhere;
+  position: relative;
+}
+
+.msg-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 6px;
+}
+
+.ghost-btn-small {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.msg-content {
+  white-space: pre-wrap;
 }
 
 .msg.user {
