@@ -611,23 +611,23 @@ class FileReadToolRunner(ToolRunner):
                 if len(data) > self.max_bytes:
                     data = data[: self.max_bytes]
                     truncated = True
-                if b\"\\x00\" in data:
-                    results.append({\"path\": str(p), \"binary\": True, \"truncated\": truncated})
+                if b"\x00" in data:
+                    results.append({"path": str(p), "binary": True, "truncated": truncated})
                     continue
-                text = data.decode(\"utf-8\", errors=\"replace\")
+                text = data.decode("utf-8", errors="replace")
                 results.append(
                     {
-                        \"path\": str(p),
-                        \"truncated\": truncated,
-                        \"lines\": text.count(\"\\n\") + 1,
-                        \"content\": text,
+                        "path": str(p),
+                        "truncated": truncated,
+                        "lines": text.count("\n") + 1,
+                        "content": text,
                     }
                 )
             except Exception as exc:
-                results.append({\"path\": str(p), \"error\": str(exc)})
+                results.append({"path": str(p), "error": str(exc)})
         duration_ms = (time.time() - start) * 1000
-        status = \"ok\" if results else \"skipped\"
-        return ToolResult(name=\"file_read\", status=status, output={\"files\": results}, duration_ms=duration_ms)
+        status = "ok" if results else "skipped"
+        return ToolResult(name="file_read", status=status, output={"files": results}, duration_ms=duration_ms)
 
 
 class VisionToolRunner(ToolRunner):
