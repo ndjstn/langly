@@ -61,6 +61,8 @@ class ToolSelectionPolicy:
         if _has_image(message):
             if "vision" in available:
                 selected.add("vision")
+            if "vision_pipeline" in available:
+                selected.add("vision_pipeline")
 
         if any(token in lowered for token in ["task", "todo", "kanban", "backlog"]):
             if "taskwarrior_mcp" in available:

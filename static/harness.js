@@ -26,6 +26,8 @@ const timingsPanel = document.getElementById("timings-panel");
 const toolsPanel = document.getElementById("tools-panel");
 const tracePanel = document.getElementById("trace-panel");
 const mermaidPanel = document.getElementById("mermaid-panel");
+const visionPanel = document.getElementById("vision-panel");
+const toolGlossaryPanel = document.getElementById("tool-glossary");
 const availablePanel = document.getElementById("available-tools");
 const themeSelect = document.getElementById("theme-select");
 const researchToggle = document.getElementById("research-toggle");
@@ -211,6 +213,62 @@ const renderTools = (tools) => {
           ${stderr ? `<div class="tool-output">stderr:\n${stderr}</div>` : ""}
           ${stdout ? `<div class="tool-output">stdout:\n${stdout}</div>` : ""}
           ${output ? `<div class="tool-output">output:\n${output}</div>` : ""}
+        </div>
+      `;
+    })
+    .join("");
+};
+
+const renderVision = (tools) => {
+  if (!visionPanel) return;
+  if (!tools) {
+    visionPanel.textContent = "";
+    return;
+  }
+  const visionTools = tools.filter((tool) => tool.name === "vision" || tool.name === "vision_pipeline");
+  if (!visionTools.length) {
+    visionPanel.textContent = "";
+    return;
+  }
+  visionPanel.innerHTML = visionTools
+    .map((tool) => {
+      const output = tool.output || {};
+      const model = output.model || output.segment_model || "";
+      const results = output.results || [];
+      const cards = results
+        .map((result) => {
+          const img =
+            result.annotated_image && result.annotated_mime
+              ? `<img class="vision-img" src="data:${result.annotated_mime};base64,${result.annotated_image}" alt="vision output" />`
+              : "";
+          const objects = result.objects || [];
+          const labels = objects.map((obj) => obj.label).filter(Boolean);
+          const labelSummary = labels.length ? labels.slice(0, 8).join(", ") : "";
+          const response = result.response ? `<div class="vision-text">${escapeHtml(result.response)}</div>` : "";
+          const error = result.error ? `<div class="vision-error">${escapeHtml(result.error)}</div>` : "";
+          return `
+            <div class="vision-card">
+              <div class="vision-meta">
+                <span>${escapeHtml(result.path || "")}</span>
+                <span>${escapeHtml(String(result.object_count ?? ""))} objects</span>
+                <span>${escapeHtml(String(result.mask_count ?? ""))} masks</span>
+              </div>
+              ${img}
+              ${labelSummary ? `<div class="vision-labels">${escapeHtml(labelSummary)}</div>` : ""}
+              ${response}
+              ${error}
+            </div>
+          `;
+        })
+        .join("");
+      return `
+        <div class="vision-tool">
+          <div class="vision-header">
+            <span class="tool-name">${escapeHtml(tool.name)}</span>
+            <span>${escapeHtml(tool.status)}</span>
+            ${model ? `<span>${escapeHtml(model)}</span>` : ""}
+          </div>
+          <div class="vision-grid">${cards}</div>
         </div>
       `;
     })
@@ -479,6 +537,41 @@ const renderAvailable = (tools) => {
   availablePanel.innerHTML = `<pre>${escapeHtml(JSON.stringify(tools, null, 2))}</pre>`;
 };
 
+const renderToolGlossary = (tools) => {
+  if (!toolGlossaryPanel) return;
+  const autoToolGlossary = {
+    greptile: "Codebase MCP tool discovery + targeted queries.",
+    lint: "Runs Ruff checks for Python linting.",
+    jj: "Shows Jujutsu status/diff for repo context.",
+    taskwarrior: "Summarizes Taskwarrior backlog and capture.",
+    taskwarrior_mcp: "Taskwarrior MCP actions (if configured).",
+    preflight: "Checks file paths, types, and metadata.",
+    mermaid: "Generates a quick reasoning graph from keywords.",
+    vision: "Calls a vision LLM on attached images.",
+    vision_pipeline: "YOLO-based detection/segmentation pipeline.",
+    browser: "Generic MCP browser automation.",
+    playwright: "Playwright MCP for browsing/testing.",
+    chrome_devtools: "Chrome DevTools MCP for rich browser control.",
+  };
+  const entries = new Map();
+  (tools || []).forEach((tool) => {
+    entries.set(tool.name, tool.description || "");
+  });
+  Object.entries(autoToolGlossary).forEach(([name, desc]) => {
+    if (!entries.has(name)) entries.set(name, desc);
+  });
+  toolGlossaryPanel.innerHTML = Array.from(entries.entries())
+    .map(
+      ([name, desc]) => `
+        <div class="glossary-card">
+          <div class="glossary-name">${escapeHtml(name)}</div>
+          <div class="glossary-desc">${escapeHtml(desc || "")}</div>
+        </div>
+      `,
+    )
+    .join("");
+};
+
 const renderAttachments = () => {
   if (!attachmentsListEl) {
     return;
@@ -677,8 +770,14 @@ sendBtn.addEventListener("click", async () => {
   timingsPanel.textContent = "";
   toolsPanel.textContent = "";
   tracePanel.textContent = "";
+  if (visionPanel) {
+    visionPanel.textContent = "";
+  }
   mermaidPanel.textContent = "";
   availablePanel.textContent = "";
+  if (toolGlossaryPanel) {
+    toolGlossaryPanel.textContent = "";
+  }
   let combinedMessage = message;
   if (attachments.length) {
     combinedMessage += `\n\nAttachments:\n${attachments.map((item) => item.path).join("\n")}`;
@@ -715,9 +814,11 @@ sendBtn.addEventListener("click", async () => {
     renderGrade(data.grade);
     renderTimings(data.timings);
     renderTools(data.tools_used);
+    renderVision(data.tools_used);
     renderTrace(data.trace);
     renderMermaid(data.mermaid);
     renderAvailable(data.available_tools);
+    renderToolGlossary(data.available_tools);
   } catch (err) {
     console.error("Harness UI error", err);
     addMessage("assistant", `Error: ${err.message}`);

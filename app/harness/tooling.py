@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import ast
 import base64
+import io
 import json
 import os
 import re
@@ -654,6 +655,143 @@ class VisionToolRunner(ToolRunner):
         )
 
 
+class VisionPipelineToolRunner(ToolRunner):
+    def __init__(self, retry_policy: RetryPolicy) -> None:
+        super().__init__("vision_pipeline", retry_policy)
+        self.model = os.getenv("LANGLY_VISION_PIPELINE_MODEL", "yolov8n.pt").strip()
+        self.seg_model = os.getenv("LANGLY_VISION_SEGMENT_MODEL", "").strip()
+        self.confidence = float(os.getenv("LANGLY_VISION_CONFIDENCE", "0.25"))
+        self.max_images = int(os.getenv("LANGLY_VISION_MAX_IMAGES", "2"))
+        self.max_objects = int(os.getenv("LANGLY_VISION_MAX_OBJECTS", "25"))
+        self._detector = None
+        self._segmenter = None
+
+    def _load_model(self, model_name: str):
+        from ultralytics import YOLO
+
+        return YOLO(model_name)
+
+    def _get_detector(self):
+        if self._detector is None:
+            self._detector = self._load_model(self.model)
+        return self._detector
+
+    def _get_segmenter(self):
+        if not self.seg_model:
+            return None
+        if self._segmenter is None:
+            self._segmenter = self._load_model(self.seg_model)
+        return self._segmenter
+
+    def run(self, context: HarnessToolContext) -> ToolResult:
+        start = time.time()
+        images = _extract_image_paths_from_message(context.message)
+        if not images:
+            return ToolResult(
+                name="vision_pipeline",
+                status="skipped",
+                stderr="no image paths found in message",
+                duration_ms=(time.time() - start) * 1000,
+            )
+        try:
+            import numpy as np  # noqa: F401
+            from PIL import Image
+        except Exception:
+            Image = None  # type: ignore[assignment]
+
+        try:
+            detector = self._get_detector()
+            segmenter = self._get_segmenter()
+        except Exception as exc:
+            duration_ms = (time.time() - start) * 1000
+            return ToolResult(
+                name="vision_pipeline",
+                status="error",
+                stderr=f"vision pipeline requires ultralytics (pip install ultralytics): {exc}",
+                duration_ms=duration_ms,
+            )
+
+        results_payload: list[dict[str, Any]] = []
+        for image_path in images[: self.max_images]:
+            path = Path(image_path).expanduser()
+            if not path.exists() or not path.is_file():
+                results_payload.append({"path": image_path, "error": "file not found"})
+                continue
+            try:
+                detections = detector.predict(
+                    source=str(path),
+                    conf=self.confidence,
+                    verbose=False,
+                )
+                result = detections[0]
+                names = result.names or {}
+                objects: list[dict[str, Any]] = []
+                if result.boxes is not None:
+                    for box in result.boxes[: self.max_objects]:
+                        xyxy = box.xyxy[0].tolist() if box.xyxy is not None else []
+                        cls_idx = int(box.cls[0]) if box.cls is not None else -1
+                        label = names.get(cls_idx, str(cls_idx))
+                        conf = float(box.conf[0]) if box.conf is not None else 0.0
+                        objects.append(
+                            {
+                                "label": label,
+                                "confidence": conf,
+                                "box": [round(x, 2) for x in xyxy],
+                            }
+                        )
+
+                mask_count = 0
+                if result.masks is not None:
+                    mask_count = len(result.masks)
+                if segmenter:
+                    seg_results = segmenter.predict(
+                        source=str(path),
+                        conf=self.confidence,
+                        verbose=False,
+                    )
+                    seg = seg_results[0]
+                    if seg.masks is not None:
+                        mask_count = max(mask_count, len(seg.masks))
+
+                annotated_b64 = None
+                annotated_mime = None
+                if Image is not None:
+                    annotated = result.plot()
+                    if hasattr(annotated, "shape") and annotated.shape[-1] == 3:
+                        annotated = annotated[..., ::-1]
+                    buffer = io.BytesIO()
+                    Image.fromarray(annotated).save(buffer, format="PNG")
+                    annotated_b64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+                    annotated_mime = "image/png"
+
+                results_payload.append(
+                    {
+                        "path": str(path),
+                        "objects": objects,
+                        "object_count": len(objects),
+                        "mask_count": mask_count,
+                        "annotated_image": annotated_b64,
+                        "annotated_mime": annotated_mime,
+                    }
+                )
+            except Exception as exc:
+                results_payload.append({"path": str(path), "error": str(exc)})
+
+        duration_ms = (time.time() - start) * 1000
+        status = "ok" if any("objects" in item for item in results_payload) else "error"
+        return ToolResult(
+            name="vision_pipeline",
+            status=status,
+            output={
+                "model": self.model,
+                "segment_model": self.seg_model or None,
+                "confidence": self.confidence,
+                "results": results_payload,
+            },
+            duration_ms=duration_ms,
+        )
+
+
 class MermaidToolRunner(ToolRunner):
     def __init__(self, retry_policy: RetryPolicy) -> None:
         super().__init__("mermaid", retry_policy)
@@ -738,7 +876,7 @@ class AutoToolRunner:
             t.strip()
             for t in os.getenv(
                 "LANGLY_AUTO_TOOLS",
-                "greptile,lint,jj,taskwarrior,preflight,mermaid,vision",
+                "greptile,lint,jj,taskwarrior,preflight,mermaid,vision,vision_pipeline",
             ).split(",")
             if t.strip()
         ]
@@ -756,6 +894,7 @@ class AutoToolRunner:
             "preflight": int(os.getenv("LANGLY_TOOL_RETRY_PREFLIGHT", "0")),
             "mermaid": int(os.getenv("LANGLY_TOOL_RETRY_MERMAID", "0")),
             "vision": int(os.getenv("LANGLY_TOOL_RETRY_VISION", "0")),
+            "vision_pipeline": int(os.getenv("LANGLY_TOOL_RETRY_VISION_PIPELINE", "0")),
         }
         self.cache_ttl = int(os.getenv("LANGLY_TOOL_CACHE_TTL_SEC", "30"))
         self.cache_max = int(os.getenv("LANGLY_TOOL_CACHE_MAX", "64"))
@@ -815,6 +954,8 @@ class AutoToolRunner:
         registry.register(PreflightToolRunner(self._policy_for("preflight")))
 
         registry.register(VisionToolRunner(self._policy_for("vision")))
+
+        registry.register(VisionPipelineToolRunner(self._policy_for("vision_pipeline")))
 
         browser_url = os.getenv("LANGLY_MCP_BROWSER_URL")
         if browser_url:

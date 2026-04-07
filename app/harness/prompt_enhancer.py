@@ -100,12 +100,45 @@ def _summarize_tools(tool_results: list[dict[str, Any]]) -> str:
     for tool in tool_results:
         name = tool.get("name")
         status = tool.get("status")
+        output = tool.get("output") or {}
         stderr = str(tool.get("stderr") or "")
         if status == "error" and stderr:
             lines.append(f"- {name}: {status} ({stderr[:140]})")
+        elif name in {"vision", "vision_pipeline"} and output:
+            summary = _summarize_vision_output(name, output)
+            if summary:
+                lines.append(f"- {name}: {summary}")
+            else:
+                lines.append(f"- {name}: {status}")
         else:
             lines.append(f"- {name}: {status}")
     return "\n".join(lines)
+
+
+def _summarize_vision_output(name: str, output: Any) -> str:
+    try:
+        results = output.get("results") if isinstance(output, dict) else None
+        if not results:
+            return ""
+        first = results[0]
+        if name == "vision":
+            response = first.get("response") or ""
+            return response.strip()[:200]
+        objects = first.get("objects") or []
+        count = first.get("object_count", len(objects))
+        labels = []
+        for item in objects:
+            label = item.get("label")
+            if label:
+                labels.append(label)
+            if len(labels) >= 6:
+                break
+        label_summary = ", ".join(labels)
+        if label_summary:
+            return f"detected {count} objects ({label_summary})"
+        return f"detected {count} objects"
+    except Exception:
+        return ""
 
 
 def _has_image(message: str) -> bool:
