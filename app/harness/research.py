@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 import re
 import time
+import html
 from typing import Any
 
 import httpx
@@ -36,7 +37,7 @@ class ResearchPlan(BaseModel):
 
 class SearxClient:
     def __init__(self, base_url: str | None = None, *, timeout: float | None = None) -> None:
-        self.base_url = (base_url or os.getenv("LANGLY_SEARX_URL", "")).rstrip("/")
+        self.base_url = (base_url or os.getenv("LANGLY_SEARX_URL") or "http://localhost:8080").rstrip("/")
         self.timeout = timeout or float(os.getenv("LANGLY_SEARX_TIMEOUT_SEC", "6"))
 
     async def search(self, query: str, *, limit: int = 5) -> ResearchResult:
@@ -51,7 +52,34 @@ class SearxClient:
                 )
                 resp.raise_for_status()
                 payload = resp.json()
+                sources = _parse_json_sources(payload, limit)
+                return ResearchResult(
+                    query=query,
+                    sources=sources,
+                    used=True,
+                    duration_ms=(time.perf_counter() - start) * 1000,
+                )
         except Exception as exc:
+            # Fall back to HTML parsing for locked-down Searx instances.
+            try:
+                async with httpx.AsyncClient(timeout=self.timeout) as client:
+                    html_resp = await client.get(f"{self.base_url}/search", params={"q": query})
+                    html_resp.raise_for_status()
+                    html_sources = _parse_html_sources(html_resp.text, limit)
+                    if html_sources:
+                        return ResearchResult(
+                            query=query,
+                            sources=html_sources,
+                            used=True,
+                            duration_ms=(time.perf_counter() - start) * 1000,
+                        )
+            except Exception as html_exc:
+                return ResearchResult(
+                    query=query,
+                    used=False,
+                    error=str(html_exc),
+                    duration_ms=(time.perf_counter() - start) * 1000,
+                )
             return ResearchResult(
                 query=query,
                 used=False,
@@ -59,22 +87,11 @@ class SearxClient:
                 duration_ms=(time.perf_counter() - start) * 1000,
             )
 
-        sources: list[ResearchSource] = []
-        for item in payload.get("results", [])[:limit]:
-            if not isinstance(item, dict):
-                continue
-            sources.append(
-                ResearchSource(
-                    title=str(item.get("title") or ""),
-                    url=str(item.get("url") or ""),
-                    snippet=str(item.get("content") or item.get("snippet") or "") or None,
-                    score=float(item.get("score")) if item.get("score") is not None else None,
-                )
-            )
         return ResearchResult(
             query=query,
-            sources=sources,
-            used=True,
+            sources=[],
+            used=False,
+            error="searx_no_results",
             duration_ms=(time.perf_counter() - start) * 1000,
         )
 
@@ -129,3 +146,40 @@ def render_sources(sources: list[ResearchSource]) -> str:
         url = source.url
         lines.append(f"[{idx}] {title} - {url}")
     return "\n".join(lines)
+
+
+def _parse_json_sources(payload: Any, limit: int) -> list[ResearchSource]:
+    sources: list[ResearchSource] = []
+    for item in (payload.get("results") or [])[:limit]:
+        if not isinstance(item, dict):
+            continue
+        sources.append(
+            ResearchSource(
+                title=str(item.get("title") or ""),
+                url=str(item.get("url") or ""),
+                snippet=str(item.get("content") or item.get("snippet") or "") or None,
+                score=float(item.get("score")) if item.get("score") is not None else None,
+            )
+        )
+    return sources
+
+
+def _parse_html_sources(html_text: str, limit: int) -> list[ResearchSource]:
+    sources: list[ResearchSource] = []
+    for block in re.findall(r"<article class=\\\"result[^\\\"]*\\\">(.*?)</article>", html_text, flags=re.DOTALL):
+        url_match = re.search(r'href=\\\"(https?://[^\\\"]+)\\\"', block)
+        title_match = re.search(r"<h3>.*?<a[^>]*>(.*?)</a>", block, flags=re.DOTALL)
+        snippet_match = re.search(r"<p class=\\\"content\\\">(.*?)</p>", block, flags=re.DOTALL)
+        if not url_match:
+            continue
+        url = html.unescape(url_match.group(1))
+        title = html.unescape(_strip_tags(title_match.group(1)) if title_match else url)
+        snippet = html.unescape(_strip_tags(snippet_match.group(1)) if snippet_match else \"\") or None
+        sources.append(ResearchSource(title=title, url=url, snippet=snippet))
+        if len(sources) >= limit:
+            break
+    return sources
+
+
+def _strip_tags(text: str) -> str:
+    return re.sub(r\"<[^>]+>\", \"\", text or \"\").strip()
