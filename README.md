@@ -133,6 +133,7 @@ python -m flask --app flask_ui.app --debug run --host 0.0.0.0 --port 5001
 - **MCP browser** tool support (Chrome DevTools or Playwright MCP servers)
 - **Task capture + templates** to surface checklists or sync to Taskwarrior (optional)
 - **Preflight** tool to check file paths quickly (non-LLM)
+- **Vision tool** to analyze attached images via Ollama vision model
 - **Vision hooks** for MCP browser screenshots (optional command)
 
 Example batch run:
@@ -173,6 +174,13 @@ Vision pipeline example (runs after screenshots):
 
 ```bash
 export LANGLY_VISION_PIPELINE_CMD="python scripts/vision_pipeline.py --image {{image}}"
+```
+
+Vision model example:
+
+```bash
+export LANGLY_VISION_MODEL=granite-vision:latest
+export LANGLY_VISION_PROMPT="Describe the image and extract key text."
 ```
 
 Background monitoring helpers:

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from time import perf_counter
 from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator
@@ -60,9 +61,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         for key, fallbacks in MODEL_FALLBACKS.items():
             model_keys.add(key)
             model_keys.update(fallbacks)
-        required_models = {
-            GRANITE_MODELS.get(key, key) for key in model_keys
-        }
+        required_models = {GRANITE_MODELS.get(key, key) for key in model_keys}
+        vision_model = os.getenv("LANGLY_VISION_MODEL", "").strip()
+        if vision_model:
+            required_models.add(vision_model)
 
         if not required_models:
             logger.info("No Ollama models configured for prefetch")

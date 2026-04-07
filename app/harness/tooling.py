@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import ast
+import base64
 import json
 import os
 import re
@@ -13,6 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Iterable, Literal
 
+import httpx
 from pydantic import BaseModel
 
 
@@ -587,6 +589,71 @@ class PreflightToolRunner(ToolRunner):
         return ToolResult(name="preflight", status="ok", output={"files": results}, duration_ms=duration_ms)
 
 
+class VisionToolRunner(ToolRunner):
+    def __init__(self, retry_policy: RetryPolicy) -> None:
+        super().__init__("vision", retry_policy)
+        self.model = os.getenv("LANGLY_VISION_MODEL", "").strip()
+        self.prompt = os.getenv(
+            "LANGLY_VISION_PROMPT",
+            "Describe the image, extract any text, and summarize key details.",
+        )
+        self.host = os.getenv("LANGLY_VISION_HOST", os.getenv("LANGLY_OLLAMA_HOST", "http://localhost:11434"))
+
+    def run(self, context: HarnessToolContext) -> ToolResult:
+        start = time.time()
+        images = _extract_image_paths_from_message(context.message)
+        if not images:
+            return ToolResult(
+                name="vision",
+                status="skipped",
+                stderr="no image paths found in message",
+                duration_ms=(time.time() - start) * 1000,
+            )
+        if not self.model:
+            return ToolResult(
+                name="vision",
+                status="error",
+                stderr="LANGLY_VISION_MODEL is not set",
+                duration_ms=(time.time() - start) * 1000,
+            )
+        outputs: list[dict[str, Any]] = []
+        for image_path in images[: int(os.getenv("LANGLY_VISION_MAX_IMAGES", "2"))]:
+            path = Path(image_path).expanduser()
+            if not path.exists() or not path.is_file():
+                outputs.append({"path": image_path, "error": "file not found"})
+                continue
+            try:
+                data = path.read_bytes()
+                encoded = base64.b64encode(data).decode("utf-8")
+                payload = {
+                    "model": self.model,
+                    "messages": [{"role": "user", "content": self.prompt}],
+                    "images": [encoded],
+                    "stream": False,
+                }
+                with httpx.Client(base_url=self.host, timeout=60) as client:
+                    resp = client.post("/api/chat", json=payload)
+                    resp.raise_for_status()
+                    result = resp.json()
+                outputs.append(
+                    {
+                        "path": str(path),
+                        "response": result.get("message", {}).get("content", ""),
+                        "model": self.model,
+                    }
+                )
+            except Exception as exc:
+                outputs.append({"path": str(path), "error": str(exc)})
+        duration_ms = (time.time() - start) * 1000
+        status = "ok" if any("response" in item for item in outputs) else "error"
+        return ToolResult(
+            name="vision",
+            status=status,
+            output={"results": outputs, "model": self.model},
+            duration_ms=duration_ms,
+        )
+
+
 class MermaidToolRunner(ToolRunner):
     def __init__(self, retry_policy: RetryPolicy) -> None:
         super().__init__("mermaid", retry_policy)
@@ -671,7 +738,7 @@ class AutoToolRunner:
             t.strip()
             for t in os.getenv(
                 "LANGLY_AUTO_TOOLS",
-                "greptile,lint,jj,taskwarrior,preflight,mermaid",
+                "greptile,lint,jj,taskwarrior,preflight,mermaid,vision",
             ).split(",")
             if t.strip()
         ]
@@ -688,6 +755,7 @@ class AutoToolRunner:
             "taskwarrior_mcp": int(os.getenv("LANGLY_TOOL_RETRY_TASK_MCP", "0")),
             "preflight": int(os.getenv("LANGLY_TOOL_RETRY_PREFLIGHT", "0")),
             "mermaid": int(os.getenv("LANGLY_TOOL_RETRY_MERMAID", "0")),
+            "vision": int(os.getenv("LANGLY_TOOL_RETRY_VISION", "0")),
         }
         self.cache_ttl = int(os.getenv("LANGLY_TOOL_CACHE_TTL_SEC", "30"))
         self.cache_max = int(os.getenv("LANGLY_TOOL_CACHE_MAX", "64"))
@@ -745,6 +813,8 @@ class AutoToolRunner:
             registry.register(MCPTaskwarriorToolRunner(task_mcp_url, self._policy_for("taskwarrior_mcp")))
 
         registry.register(PreflightToolRunner(self._policy_for("preflight")))
+
+        registry.register(VisionToolRunner(self._policy_for("vision")))
 
         browser_url = os.getenv("LANGLY_MCP_BROWSER_URL")
         if browser_url:
@@ -857,6 +927,16 @@ def _extract_paths(message: str) -> list[str]:
         return []
     matches = re.findall(r"(?:\\.?/[^\\s'\\\"]+)", message)
     return [m.strip(".,)") for m in matches]
+
+
+def _extract_image_paths_from_message(message: str) -> list[str]:
+    paths = _extract_paths(message)
+    images: list[str] = []
+    for path in paths:
+        lower = path.lower()
+        if lower.endswith((".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif")):
+            images.append(path)
+    return images
 
 
 def _scan_python_symbols(path: Path) -> dict[str, list[str]]:
